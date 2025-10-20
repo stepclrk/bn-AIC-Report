@@ -1,0 +1,6 @@
+{
+  "trendThresholdPercent": 20,
+  "trendComparisonMonths": 3,
+  "anomalyDetectionSigma": 2,
+  "forecastHorizonMonths": 3
+}

@@ -1,0 +1,3794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Transaction Dashboard</title>
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-bg: #ecf0f1;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .upload-container {
+            max-width: 800px;
+            margin: 50px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .dashboard-container {
+            display: none;
+            padding: 20px;
+            background: white;
+            margin: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .file-input-group {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        .file-input-group:hover {
+            border-color: var(--secondary-color);
+            background: #f8f9fa;
+        }
+
+        .file-input-group.loaded {
+            border-color: var(--success-color);
+            background: #d4edda;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 10px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .insight-card {
+            background: #fff3cd;
+            border-left: 4px solid var(--warning-color);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .insight-card.positive {
+            background: #d4edda;
+            border-left-color: var(--success-color);
+        }
+
+        .insight-card.negative {
+            background: #f8d7da;
+            border-left-color: var(--danger-color);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 30px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .table-container {
+            margin: 30px 0;
+            overflow-x: auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: var(--primary-color);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .filter-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        #partnerFilter, #customerEntityFilter {
+            min-height: 120px;
+        }
+
+        #partnerFilter option, #customerEntityFilter option {
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        #partnerFilter option:hover, #customerEntityFilter option:hover {
+            background: #e9ecef;
+        }
+
+        #partnerFilter option[style*="display: none"] {
+            display: none !important;
+        }
+
+        input[type="date"] {
+            cursor: pointer;
+        }
+
+        .nav-tabs .nav-link {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .nav-tabs .nav-link.active {
+            background: var(--secondary-color);
+            color: white;
+            border-color: var(--secondary-color);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .trend-up { color: var(--success-color); }
+        .trend-down { color: var(--danger-color); }
+        .trend-neutral { color: var(--warning-color); }
+
+        .progress-custom {
+            height: 25px;
+            border-radius: 12px;
+            background: #e9ecef;
+            overflow: hidden;
+        }
+
+        .progress-bar-custom {
+            height: 100%;
+            background: linear-gradient(90deg, var(--secondary-color), var(--success-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            transition: width 0.6s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Upload Page -->
+    <div id="uploadPage" class="upload-container">
+        <h1 class="text-center mb-4">Invoice Transaction Dashboard</h1>
+        <p class="text-center text-muted mb-5">Upload your Transaction Report to generate comprehensive analytics. Optionally upload entity lookup files for friendly names.</p>
+
+        <div class="file-input-group" id="transactionGroup">
+            <label class="form-label fw-bold">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Transaction Report <span class="badge bg-primary">Required</span>
+            </label>
+            <input type="file" class="form-control" id="transactionFile" accept=".xlsx,.xls">
+            <small class="text-muted">Upload Transaction Report.xlsx</small>
+        </div>
+
+        <div class="file-input-group" id="customerGroup">
+            <label class="form-label fw-bold">
+                <i class="bi bi-building"></i> Customer Legal Entities <span class="badge bg-secondary">Optional</span>
+            </label>
+            <input type="file" class="form-control" id="customerFile" accept=".xlsx,.xls">
+            <small class="text-muted">Upload Customer Legal Entity.xlsx (if not provided, IDs will be used)</small>
+        </div>
+
+        <div class="file-input-group" id="partnerGroup">
+            <label class="form-label fw-bold">
+                <i class="bi bi-people"></i> Trading Partner Legal Entities <span class="badge bg-secondary">Optional</span>
+            </label>
+            <input type="file" class="form-control" id="partnerFile" accept=".xlsx,.xls">
+            <small class="text-muted">Upload Trading Partner Legal Entity.xlsx (if not provided, IDs will be used)</small>
+        </div>
+
+        <div class="file-input-group" id="configGroup">
+            <label class="form-label fw-bold">
+                <i class="bi bi-gear"></i> Configuration <span class="badge bg-secondary">Optional</span>
+            </label>
+            <input type="file" class="form-control" id="configFile" accept=".json">
+            <small class="text-muted">Upload config.json to customize analysis parameters (trend threshold, periods, etc.)</small>
+        </div>
+
+        <button id="generateBtn" class="btn btn-primary btn-lg w-100 mt-4" disabled>
+            Generate Dashboard
+        </button>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboardPage" class="dashboard-container">
+        <div id="savedReportBanner" class="alert alert-success" style="display: none;">
+            <strong>Saved Report Loaded:</strong> This is an interactive saved report. All charts, filters, and data are fully functional.
+            <span id="reportTimestamp"></span>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Invoice Transaction Dashboard</h2>
+            <div id="dashboardActions">
+                <button id="configBtn" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#configModal">
+                    <i class="bi bi-gear"></i> Settings
+                </button>
+                <button id="saveBtn" class="btn btn-success">Save Report</button>
+                <button id="newUploadBtn" class="btn btn-secondary">New Upload</button>
+            </div>
+        </div>
+
+        <!-- Configuration Modal -->
+        <div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="configModalLabel">Analysis Configuration</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small">Configure parameters for trend analysis, anomaly detection, and forecasting.</p>
+
+                        <div class="mb-3">
+                            <label for="configTrendThreshold" class="form-label fw-bold">Trend Threshold (%)</label>
+                            <input type="number" class="form-control" id="configTrendThreshold" min="1" max="100" step="1">
+                            <small class="text-muted">Percentage change required to flag as growing/declining (default: 20)</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="configTrendMonths" class="form-label fw-bold">Trend Comparison Period (months)</label>
+                            <input type="number" class="form-control" id="configTrendMonths" min="1" max="12" step="1">
+                            <small class="text-muted">Number of months for recent vs previous comparison (default: 3)</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="configAnomalySigma" class="form-label fw-bold">Anomaly Detection Sigma (σ)</label>
+                            <input type="number" class="form-control" id="configAnomalySigma" min="1" max="5" step="0.1">
+                            <small class="text-muted">Standard deviation threshold for outliers (default: 2)</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="configForecastMonths" class="form-label fw-bold">Forecast Horizon (months)</label>
+                            <input type="number" class="form-control" id="configForecastMonths" min="1" max="12" step="1">
+                            <small class="text-muted">How many months ahead to forecast (default: 3)</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer d-flex justify-content-between">
+                        <button type="button" class="btn btn-success" id="downloadConfigBtn">
+                            <i class="bi bi-download"></i> Download Config
+                        </button>
+                        <div>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="applyConfigBtn">Apply Configuration</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" data-bs-toggle="tab" href="#executive">Executive Summary</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#customers">Customer Entities</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#partners">Trading Partner Entities</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#analysis">Analysis</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#filesize">File Size</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#countries">Countries</a>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Executive Summary Tab -->
+            <div class="tab-pane fade show active" id="executive">
+                <div id="executiveSummary"></div>
+            </div>
+
+            <!-- Customer Entities Tab -->
+            <div class="tab-pane fade" id="customers">
+                <div id="customerEntities"></div>
+            </div>
+
+            <!-- Trading Partner Entities Tab -->
+            <div class="tab-pane fade" id="partners">
+                <div id="partnerEntities"></div>
+            </div>
+
+            <!-- Analysis Tab -->
+            <div class="tab-pane fade" id="analysis">
+                <div id="analysisContent"></div>
+            </div>
+
+            <!-- File Size Tab -->
+            <div class="tab-pane fade" id="filesize">
+                <div id="fileSizeContent"></div>
+            </div>
+
+            <!-- Countries Tab -->
+            <div class="tab-pane fade" id="countries">
+                <div id="countriesAnalysis"></div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div id="reportFooter" class="mt-5 pt-4 pb-3 text-center border-top" style="display: none;">
+            <p class="text-muted mb-0">Created By Stephen Clarke</p>
+        </div>
+    </div>
+
+    <script>
+        let transactionData = null;
+        let customerData = null;
+        let partnerData = null;
+        let processedData = null;
+        let charts = {};
+
+        // Default analysis configuration
+        let analysisConfig = {
+            trendThresholdPercent: 20,
+            trendComparisonMonths: 3,
+            anomalyDetectionSigma: 2,
+            forecastHorizonMonths: 3
+        };
+
+        // Check if this is a saved report with embedded data
+        function checkForEmbeddedData() {
+            if (window.EMBEDDED_REPORT_DATA) {
+                console.log('Embedded data found, loading saved report...');
+
+                // Load the embedded data
+                transactionData = window.EMBEDDED_REPORT_DATA.transactionData;
+                customerData = window.EMBEDDED_REPORT_DATA.customerData;
+                partnerData = window.EMBEDDED_REPORT_DATA.partnerData;
+                processedData = window.EMBEDDED_REPORT_DATA.processedData;
+
+                // Hide upload page and show dashboard
+                document.getElementById('uploadPage').style.display = 'none';
+                document.getElementById('dashboardPage').style.display = 'block';
+
+                // Show saved report banner
+                const banner = document.getElementById('savedReportBanner');
+                if (banner) {
+                    banner.style.display = 'block';
+
+                    // Show timestamp if available
+                    if (window.EMBEDDED_REPORT_DATA.timestamp) {
+                        const timestamp = new Date(window.EMBEDDED_REPORT_DATA.timestamp);
+                        const timestampSpan = document.getElementById('reportTimestamp');
+                        if (timestampSpan) {
+                            timestampSpan.textContent = ` (Saved: ${timestamp.toLocaleString()})`;
+                        }
+                    }
+                }
+
+                // Render the dashboard with the loaded data
+                renderDashboard();
+
+                // Hide action buttons (Settings, Save Report, New Upload) for saved reports
+                const dashboardActions = document.getElementById('dashboardActions');
+                if (dashboardActions) {
+                    dashboardActions.style.display = 'none';
+                }
+
+                // Show footer with author credit
+                const reportFooter = document.getElementById('reportFooter');
+                if (reportFooter) {
+                    reportFooter.style.display = 'block';
+                }
+
+                return true;
+            }
+            return false;
+        }
+
+        // File upload handlers
+        document.getElementById('transactionFile').addEventListener('change', (e) => handleFileUpload(e, 'transaction'));
+        document.getElementById('customerFile').addEventListener('change', (e) => handleFileUpload(e, 'customer'));
+        document.getElementById('partnerFile').addEventListener('change', (e) => handleFileUpload(e, 'partner'));
+        document.getElementById('configFile').addEventListener('change', (e) => handleConfigUpload(e));
+        document.getElementById('generateBtn').addEventListener('click', generateDashboard);
+        document.getElementById('saveBtn').addEventListener('click', saveReport);
+        document.getElementById('newUploadBtn').addEventListener('click', resetUpload);
+        document.getElementById('applyConfigBtn').addEventListener('click', applyConfigFromModal);
+        document.getElementById('downloadConfigBtn').addEventListener('click', downloadConfig);
+
+        // Check for embedded data on page load
+        // Use setTimeout to ensure DOM is fully loaded and any embedded data scripts have run
+        setTimeout(function() {
+            if (!window.EMBEDDED_REPORT_DATA) {
+                // No embedded data found, this is a fresh page load
+                console.log('No embedded data found, showing upload interface');
+            }
+            // If EMBEDDED_REPORT_DATA exists, checkForEmbeddedData() will be called by the loader script
+        }, 100);
+
+        function handleFileUpload(event, type) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                if (type === 'transaction') {
+                    transactionData = jsonData;
+                    document.getElementById('transactionGroup').classList.add('loaded');
+                } else if (type === 'customer') {
+                    customerData = jsonData;
+                    document.getElementById('customerGroup').classList.add('loaded');
+                } else if (type === 'partner') {
+                    partnerData = jsonData;
+                    document.getElementById('partnerGroup').classList.add('loaded');
+                }
+
+                checkAllFilesLoaded();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function handleConfigUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const configData = JSON.parse(e.target.result);
+
+                    // Merge with defaults (only override provided values)
+                    analysisConfig = {
+                        ...analysisConfig,
+                        ...configData
+                    };
+
+                    console.log('Configuration loaded:', analysisConfig);
+                    document.getElementById('configGroup').classList.add('loaded');
+
+                    // Update modal fields with loaded config
+                    updateConfigModal();
+                } catch (error) {
+                    alert('Error parsing config.json: ' + error.message);
+                    console.error('Config parse error:', error);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function updateConfigModal() {
+            // Populate modal inputs with current config values
+            document.getElementById('configTrendThreshold').value = analysisConfig.trendThresholdPercent;
+            document.getElementById('configTrendMonths').value = analysisConfig.trendComparisonMonths;
+            document.getElementById('configAnomalySigma').value = analysisConfig.anomalyDetectionSigma;
+            document.getElementById('configForecastMonths').value = analysisConfig.forecastHorizonMonths;
+        }
+
+        function downloadConfig() {
+            // Get current values from modal (or use analysisConfig if not modified)
+            const configToSave = {
+                trendThresholdPercent: parseInt(document.getElementById('configTrendThreshold').value) || analysisConfig.trendThresholdPercent,
+                trendComparisonMonths: parseInt(document.getElementById('configTrendMonths').value) || analysisConfig.trendComparisonMonths,
+                anomalyDetectionSigma: parseFloat(document.getElementById('configAnomalySigma').value) || analysisConfig.anomalyDetectionSigma,
+                forecastHorizonMonths: parseInt(document.getElementById('configForecastMonths').value) || analysisConfig.forecastHorizonMonths
+            };
+
+            // Prompt for filename
+            const defaultFilename = 'config.json';
+            const filename = prompt('Enter configuration filename:', defaultFilename);
+
+            if (!filename) return; // User cancelled
+
+            // Ensure .json extension
+            const finalFilename = filename.endsWith('.json') ? filename : filename + '.json';
+
+            // Create JSON string with pretty formatting
+            const jsonString = JSON.stringify(configToSave, null, 2);
+
+            // Create blob and download
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = finalFilename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            console.log('Configuration downloaded as:', finalFilename);
+        }
+
+        function applyConfigFromModal() {
+            // Get values from modal
+            const newConfig = {
+                trendThresholdPercent: parseInt(document.getElementById('configTrendThreshold').value) || 20,
+                trendComparisonMonths: parseInt(document.getElementById('configTrendMonths').value) || 3,
+                anomalyDetectionSigma: parseFloat(document.getElementById('configAnomalySigma').value) || 2,
+                forecastHorizonMonths: parseInt(document.getElementById('configForecastMonths').value) || 3
+            };
+
+            // Update config
+            analysisConfig = newConfig;
+            console.log('Configuration updated:', analysisConfig);
+
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('configModal'));
+            if (modal) modal.hide();
+
+            // Re-render Analysis tab if data exists
+            if (processedData) {
+                // Show loading indicator
+                const analysisContainer = document.getElementById('analysisContent');
+                if (analysisContainer) {
+                    analysisContainer.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Recalculating...</span></div><p class="mt-3">Recalculating analysis with new parameters...</p></div>';
+                }
+
+                // Re-render after short delay to show loading state
+                setTimeout(() => {
+                    renderAnalysisTab();
+
+                    // Show success message
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                    alertDiv.innerHTML = `
+                        <strong>Configuration Applied!</strong> Analysis updated with new parameters.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    const analysisTab = document.getElementById('analysis');
+                    if (analysisTab) {
+                        analysisTab.insertBefore(alertDiv, analysisTab.firstChild);
+
+                        // Auto-dismiss after 5 seconds
+                        setTimeout(() => {
+                            alertDiv.classList.remove('show');
+                            setTimeout(() => alertDiv.remove(), 150);
+                        }, 5000);
+                    }
+                }, 300);
+            } else {
+                alert('Configuration saved. It will be applied when you generate the dashboard.');
+            }
+        }
+
+        function checkAllFilesLoaded() {
+            // Only transaction data is required - customer and partner files are optional
+            if (transactionData) {
+                document.getElementById('generateBtn').disabled = false;
+            }
+        }
+
+        function generateDashboard() {
+            document.getElementById('generateBtn').innerHTML = '<span class="spinner"></span> Processing...';
+            document.getElementById('generateBtn').disabled = true;
+
+            setTimeout(() => {
+                processData();
+                renderDashboard();
+                document.getElementById('uploadPage').style.display = 'none';
+                document.getElementById('dashboardPage').style.display = 'block';
+
+                // Initialize modal with current config
+                updateConfigModal();
+
+                // Add event listener for modal shown event (only once)
+                const configModal = document.getElementById('configModal');
+                if (configModal && !configModal.dataset.listenerAdded) {
+                    configModal.addEventListener('shown.bs.modal', updateConfigModal);
+                    configModal.dataset.listenerAdded = 'true';
+                }
+            }, 500);
+        }
+
+        function processData() {
+            // Create lookup maps for customer and partner names
+            const customerMap = {};
+            const partnerMap = {};
+
+            // Build customer lookup map if customer data is provided
+            if (customerData && customerData.length > 0) {
+                // Find the correct column name for Legal ID (could have newline or not)
+                const sampleRow = customerData[0];
+                const customerIdCol = Object.keys(sampleRow).find(k => k.includes('Legal ID'));
+                const customerNameCol = Object.keys(sampleRow).find(k => k.includes('Bunge Entity') || k.includes('Entity name'));
+
+                console.log('Customer columns:', customerIdCol, customerNameCol);
+
+                // Build customer lookup map with string keys
+                customerData.forEach(row => {
+                    if (customerIdCol && customerNameCol) {
+                        const id = String(row[customerIdCol] || '').trim();
+                        const name = String(row[customerNameCol] || '').trim();
+                        if (id && name) {
+                            customerMap[id] = name;
+                        }
+                    }
+                });
+
+                console.log('Customer map size:', Object.keys(customerMap).length);
+                console.log('Sample customer map:', Object.entries(customerMap).slice(0, 3));
+            } else {
+                console.log('No customer data provided - will use IDs as names');
+            }
+
+            // Build partner lookup map if partner data is provided
+            if (partnerData && partnerData.length > 0) {
+                // Find the correct column name for Legal ID (could have newline or not)
+                const sampleRow = partnerData[0];
+                const partnerIdCol = Object.keys(sampleRow).find(k => k.includes('Legal ID'));
+                const partnerNameCol = Object.keys(sampleRow).find(k => k.includes('Legal Entity Name') || k.includes('Entity Name'));
+
+                console.log('Partner columns:', partnerIdCol, partnerNameCol);
+
+                // Build partner lookup map with string keys
+                partnerData.forEach(row => {
+                    if (partnerIdCol && partnerNameCol) {
+                        const id = String(row[partnerIdCol] || '').trim();
+                        const name = String(row[partnerNameCol] || '').trim();
+                        if (id && name) {
+                            partnerMap[id] = name;
+                        }
+                    }
+                });
+
+                console.log('Partner map size:', Object.keys(partnerMap).length);
+                console.log('Sample partner map:', Object.entries(partnerMap).slice(0, 3));
+            } else {
+                console.log('No partner data provided - will use IDs as names');
+            }
+
+            // Enrich transaction data
+            processedData = transactionData.map(row => {
+                const senderId = String(row['Sender Unique ID'] || '').trim();
+                const receiverId = String(row['Receiver Unique ID'] || '').trim();
+                const invoiceDate = parseDate(row['Transaction Start Time']);
+
+                // Use lookup name if available, otherwise use the ID itself
+                const customerName = customerMap[senderId] || senderId || 'Unknown Customer';
+                const partnerName = partnerMap[receiverId] || receiverId || 'Unknown Partner';
+
+                return {
+                    ...row,
+                    customerName: customerName,
+                    partnerName: partnerName,
+                    invoiceDate: invoiceDate,
+                    month: invoiceDate ? `${invoiceDate.getFullYear()}-${String(invoiceDate.getMonth() + 1).padStart(2, '0')}` : 'Unknown',
+                    totalSize: parseFloat(row['Total File Size(kb)']) || 0,
+                    senderCountry: String(row['Sender Country Code'] || 'Unknown').trim(),
+                    receiverCountry: String(row['Receiver country Code'] || 'Unknown').trim()
+                };
+            });
+
+            // Log matching statistics
+            const unknownCustomers = processedData.filter(d => d.customerName === 'Unknown Customer').length;
+            const unknownPartners = processedData.filter(d => d.partnerName === 'Unknown Partner').length;
+            console.log(`Matching results: ${unknownCustomers} unknown customers, ${unknownPartners} unknown partners out of ${processedData.length} total`);
+        }
+
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+
+            // Convert to string and trim whitespace
+            const trimmed = String(dateStr).trim();
+            if (!trimmed) return null;
+
+            // Check for M/D/YY, H:MM AM/PM format (Transaction Start Time format)
+            // Example: "8/29/25, 10:07 AM"
+            const timeMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}),?\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+            if (timeMatch) {
+                let month = parseInt(timeMatch[1]);
+                let day = parseInt(timeMatch[2]);
+                let year = parseInt(timeMatch[3]) + 2000; // Convert 2-digit year to 4-digit
+                let hour = parseInt(timeMatch[4]);
+                let minute = parseInt(timeMatch[5]);
+                const ampm = timeMatch[6].toUpperCase();
+
+                // Convert to 24-hour format
+                if (ampm === 'PM' && hour !== 12) {
+                    hour += 12;
+                } else if (ampm === 'AM' && hour === 12) {
+                    hour = 0;
+                }
+
+                return new Date(year, month - 1, day, hour, minute);
+            }
+
+            // Check for MM/DD/YYYY or MM/DD/YY format (without time)
+            const usMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+            if (usMatch) {
+                let month = parseInt(usMatch[1]);
+                let day = parseInt(usMatch[2]);
+                let year = parseInt(usMatch[3]);
+
+                // Handle 2-digit years
+                if (year < 100) {
+                    year += 2000;
+                }
+
+                return new Date(year, month - 1, day);
+            }
+
+            // Check for YYYY-MM-DD format (ISO format)
+            const isoMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+            if (isoMatch) {
+                const year = parseInt(isoMatch[1]);
+                const month = parseInt(isoMatch[2]);
+                const day = parseInt(isoMatch[3]);
+                return new Date(year, month - 1, day);
+            }
+
+            // Try JavaScript's built-in date parsing as fallback
+            const date = new Date(trimmed);
+            return isNaN(date.getTime()) ? null : date;
+        }
+
+        function renderDashboard() {
+            renderExecutiveSummary();
+            renderCustomerEntities();
+            renderPartnerEntities();
+            renderAnalysisTab();
+            renderFileSizeAnalysis();
+            renderCountriesAnalysis();
+        }
+
+        function renderExecutiveSummary() {
+            const container = document.getElementById('executiveSummary');
+
+            // Calculate statistics
+            const stats = calculateStats();
+            const monthlyData = getMonthlyData();
+            const insights = generateInsights(stats, monthlyData);
+
+            let html = '<h3 class="mb-4">Executive Summary</h3>';
+
+            // Key Statistics
+            html += '<div class="row">';
+            html += `
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Invoices</div>
+                        <div class="stat-value">${stats.totalInvoices.toLocaleString()}</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Customer Entities</div>
+                        <div class="stat-value">${stats.totalCustomers}</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Trading Partners</div>
+                        <div class="stat-value">${stats.totalPartners}</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Countries</div>
+                        <div class="stat-value">${stats.totalCountries}</div>
+                    </div>
+                </div>
+            </div>`;
+
+            // Intelligence Insights
+            html += '<h4 class="mt-5 mb-3">Key Insights</h4>';
+            insights.forEach(insight => {
+                html += `<div class="insight-card ${insight.type}">${insight.message}</div>`;
+            });
+
+            // Monthly Trend Chart
+            html += '<h4 class="mt-5 mb-3">Monthly Invoice Volume</h4>';
+            html += '<div class="chart-container"><canvas id="monthlyTrendChart"></canvas></div>';
+
+            // Customer Entity Breakdown Chart
+            html += '<h4 class="mt-5 mb-3">Invoices by Customer Entity (Monthly)</h4>';
+            html += '<div class="filter-section">';
+            html += '<label class="form-label fw-bold mb-3">Select Customer Entities:</label>';
+            html += '<div id="customerEntityFilters" class="row"></div>';
+            html += '</div>';
+            html += '<div class="chart-container"><canvas id="customerMonthlyChart"></canvas></div>';
+
+            // Monthly Details Table
+            html += '<h4 class="mt-5 mb-3">Month-over-Month Details</h4>';
+            html += '<div class="table-container">';
+            html += '<table class="table table-hover">';
+            html += '<thead><tr><th>Month</th><th>Invoices</th><th>Change</th><th>Total Size (KB)</th><th>Avg Size (KB)</th><th>Customers</th><th>Partners</th></tr></thead>';
+            html += '<tbody>';
+
+            const sortedMonths = Object.keys(monthlyData).sort();
+            let prevCount = null;
+
+            sortedMonths.forEach(month => {
+                const data = monthlyData[month];
+                let changeHtml = '-';
+
+                if (prevCount !== null) {
+                    const change = ((data.count - prevCount) / prevCount * 100).toFixed(1);
+                    const trendClass = change > 0 ? 'trend-up' : (change < 0 ? 'trend-down' : 'trend-neutral');
+                    changeHtml = `<span class="${trendClass}">${change > 0 ? '+' : ''}${change}%</span>`;
+                }
+
+                html += `<tr>
+                    <td>${month}</td>
+                    <td>${data.count.toLocaleString()}</td>
+                    <td>${changeHtml}</td>
+                    <td>${data.totalSize.toLocaleString()}</td>
+                    <td>${data.avgSize.toFixed(2)}</td>
+                    <td>${data.customers}</td>
+                    <td>${data.partners}</td>
+                </tr>`;
+
+                prevCount = data.count;
+            });
+
+            html += '</tbody></table></div>';
+
+            container.innerHTML = html;
+
+            // Render monthly trend chart
+            renderMonthlyTrendChart(monthlyData);
+            // Render customer entity breakdown chart
+            renderCustomerMonthlyChart();
+        }
+
+        function calculateStats() {
+            const uniqueCustomers = new Set(processedData.map(d => d.customerName));
+            const uniquePartners = new Set(processedData.map(d => d.partnerName));
+            const uniqueCountries = new Set([
+                ...processedData.map(d => d.senderCountry),
+                ...processedData.map(d => d.receiverCountry)
+            ]);
+
+            return {
+                totalInvoices: processedData.length,
+                totalCustomers: uniqueCustomers.size,
+                totalPartners: uniquePartners.size,
+                totalCountries: uniqueCountries.size,
+                totalSize: processedData.reduce((sum, d) => sum + d.totalSize, 0)
+            };
+        }
+
+        function getMonthlyData() {
+            const monthlyData = {};
+
+            processedData.forEach(row => {
+                const month = row.month;
+                if (!monthlyData[month]) {
+                    monthlyData[month] = {
+                        count: 0,
+                        totalSize: 0,
+                        customers: new Set(),
+                        partners: new Set()
+                    };
+                }
+
+                monthlyData[month].count++;
+                monthlyData[month].totalSize += row.totalSize;
+                monthlyData[month].customers.add(row.customerName);
+                monthlyData[month].partners.add(row.partnerName);
+            });
+
+            // Convert sets to counts and calculate averages
+            Object.keys(monthlyData).forEach(month => {
+                const data = monthlyData[month];
+                data.avgSize = data.totalSize / data.count;
+                data.customers = data.customers.size;
+                data.partners = data.partners.size;
+            });
+
+            return monthlyData;
+        }
+
+        function generateInsights(stats, monthlyData) {
+            const insights = [];
+            const months = Object.keys(monthlyData).sort();
+
+            if (months.length >= 2) {
+                const latest = monthlyData[months[months.length - 1]];
+                const previous = monthlyData[months[months.length - 2]];
+                const growth = ((latest.count - previous.count) / previous.count * 100).toFixed(1);
+
+                if (Math.abs(growth) > 10) {
+                    insights.push({
+                        type: growth > 0 ? 'positive' : 'negative',
+                        message: `Invoice volume ${growth > 0 ? 'increased' : 'decreased'} by ${Math.abs(growth)}% from ${months[months.length - 2]} to ${months[months.length - 1]}.`
+                    });
+                }
+            }
+
+            // Top customer
+            const customerCounts = {};
+            processedData.forEach(row => {
+                customerCounts[row.customerName] = (customerCounts[row.customerName] || 0) + 1;
+            });
+            const topCustomer = Object.entries(customerCounts).sort((a, b) => b[1] - a[1])[0];
+            insights.push({
+                type: 'positive',
+                message: `${topCustomer[0]} is the most active customer with ${topCustomer[1].toLocaleString()} invoices (${(topCustomer[1] / stats.totalInvoices * 100).toFixed(1)}% of total).`
+            });
+
+            // Average file size insight
+            const avgSize = stats.totalSize / stats.totalInvoices;
+            insights.push({
+                type: 'neutral',
+                message: `Average invoice file size is ${avgSize.toFixed(2)} KB, totaling ${(stats.totalSize / 1024).toFixed(2)} MB across all transactions.`
+            });
+
+            // Geographic insight
+            const countryCombos = {};
+            processedData.forEach(row => {
+                const combo = `${row.senderCountry} → ${row.receiverCountry}`;
+                countryCombos[combo] = (countryCombos[combo] || 0) + 1;
+            });
+            const topRoute = Object.entries(countryCombos).sort((a, b) => b[1] - a[1])[0];
+            insights.push({
+                type: 'neutral',
+                message: `The most common route is ${topRoute[0]} with ${topRoute[1].toLocaleString()} invoices (${(topRoute[1] / stats.totalInvoices * 100).toFixed(1)}%).`
+            });
+
+            return insights;
+        }
+
+        function renderMonthlyTrendChart(monthlyData) {
+            const ctx = document.getElementById('monthlyTrendChart');
+            if (!ctx) return;
+
+            const sortedMonths = Object.keys(monthlyData).sort();
+            const data = sortedMonths.map(m => monthlyData[m].count);
+
+            if (charts.monthlyTrend) charts.monthlyTrend.destroy();
+
+            charts.monthlyTrend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sortedMonths,
+                    datasets: [{
+                        label: 'Invoice Count',
+                        data: data,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Invoices: ${context.parsed.y.toLocaleString()}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Store customer monthly data globally for filtering
+        let customerEntityData = null;
+        // Store partner groups data globally for chart toggling
+        let allPartnerGroups = null;
+        let showingAllPartners = false;
+        // Store original partner list for filtering
+        let allPartnersList = [];
+
+        function renderCustomerMonthlyChart() {
+            const ctx = document.getElementById('customerMonthlyChart');
+            if (!ctx) return;
+
+            // Group data by customer and month
+            const customerMonthlyData = {};
+            processedData.forEach(row => {
+                const customer = row.customerName;
+                const month = row.month;
+
+                if (!customerMonthlyData[customer]) {
+                    customerMonthlyData[customer] = {};
+                }
+                if (!customerMonthlyData[customer][month]) {
+                    customerMonthlyData[customer][month] = 0;
+                }
+                customerMonthlyData[customer][month]++;
+            });
+
+            // Get sorted list of all months
+            const allMonths = [...new Set(processedData.map(d => d.month))].sort();
+
+            // Define color palette for customers
+            const colors = [
+                '#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b',
+                '#fa709a', '#fee140', '#30cfd0', '#a8edea', '#fed6e3',
+                '#fbc2eb', '#a1c4fd', '#ffecd2', '#ff9a9e', '#fad0c4'
+            ];
+
+            // Sort customers by total invoice count
+            const sortedCustomers = Object.entries(customerMonthlyData)
+                .filter(([customer]) => customer !== 'Unknown Customer')
+                .sort((a, b) => {
+                    const totalA = Object.values(a[1]).reduce((sum, count) => sum + count, 0);
+                    const totalB = Object.values(b[1]).reduce((sum, count) => sum + count, 0);
+                    return totalB - totalA;
+                });
+
+            // Store data globally for filter updates
+            customerEntityData = {
+                customers: sortedCustomers.map(([name], idx) => ({
+                    name,
+                    color: colors[idx % colors.length]
+                })),
+                monthlyData: customerMonthlyData,
+                allMonths
+            };
+
+            // Render filter checkboxes
+            const filterContainer = document.getElementById('customerEntityFilters');
+            if (filterContainer) {
+                let filterHtml = '<div class="col-12 mb-2">';
+                filterHtml += '<button class="btn btn-sm btn-outline-primary me-2" onclick="toggleAllCustomers(true)">Select All</button>';
+                filterHtml += '<button class="btn btn-sm btn-outline-secondary" onclick="toggleAllCustomers(false)">Deselect All</button>';
+                filterHtml += '</div>';
+
+                customerEntityData.customers.forEach((customer, idx) => {
+                    filterHtml += `<div class="col-md-4 col-sm-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input customer-filter-checkbox" type="checkbox"
+                                   id="customer_${idx}" value="${customer.name}" checked
+                                   onchange="updateCustomerChart()">
+                            <label class="form-check-label" for="customer_${idx}" style="cursor: pointer;">
+                                <span style="display: inline-block; width: 12px; height: 12px; background: ${customer.color}; margin-right: 5px; border-radius: 2px;"></span>
+                                ${customer.name}
+                            </label>
+                        </div>
+                    </div>`;
+                });
+
+                filterContainer.innerHTML = filterHtml;
+            }
+
+            // Initial chart render with all customers selected
+            updateCustomerChart();
+        }
+
+        function updateCustomerChart() {
+            if (!customerEntityData) return;
+
+            const ctx = document.getElementById('customerMonthlyChart');
+            if (!ctx) return;
+
+            // Get selected customers from checkboxes
+            const selectedCustomers = Array.from(document.querySelectorAll('.customer-filter-checkbox:checked'))
+                .map(cb => cb.value);
+
+            // Create datasets for selected customers only
+            const datasets = customerEntityData.customers
+                .filter(customer => selectedCustomers.includes(customer.name))
+                .map(customer => {
+                    const monthData = customerEntityData.monthlyData[customer.name];
+                    return {
+                        label: customer.name,
+                        data: customerEntityData.allMonths.map(month => monthData[month] || 0),
+                        borderColor: customer.color,
+                        backgroundColor: customer.color,
+                        borderWidth: 3,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        fill: false
+                    };
+                });
+
+            if (charts.customerMonthly) charts.customerMonthly.destroy();
+
+            charts.customerMonthly = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: customerEntityData.allMonths,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y.toLocaleString()} invoices`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: true,
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Number of Invoices'
+                            },
+                            grid: {
+                                display: true,
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        function toggleAllCustomers(selectAll) {
+            const checkboxes = document.querySelectorAll('.customer-filter-checkbox');
+            checkboxes.forEach(cb => cb.checked = selectAll);
+            updateCustomerChart();
+        }
+
+        function renderCustomerEntities() {
+            const container = document.getElementById('customerEntities');
+
+            // Group data by customer
+            const customerGroups = {};
+            processedData.forEach(row => {
+                if (!customerGroups[row.customerName]) {
+                    customerGroups[row.customerName] = [];
+                }
+                customerGroups[row.customerName].push(row);
+            });
+
+            let html = '<h3 class="mb-4">Customer Entities Analysis</h3>';
+
+            // Filter section
+            html += '<div class="filter-section">';
+            html += '<label class="form-label fw-bold">Filter by Customer:</label>';
+            html += '<select id="customerFilter" class="form-select">';
+            html += '<option value="all">All Customers</option>';
+            Object.keys(customerGroups).sort().forEach(customer => {
+                html += `<option value="${customer}">${customer}</option>`;
+            });
+            html += '</select></div>';
+
+            // Customer summary cards
+            html += '<div id="customerDetails">';
+
+            Object.entries(customerGroups).sort((a, b) => b[1].length - a[1].length).forEach(([customer, invoices]) => {
+                const monthlyBreakdown = {};
+                const partnerBreakdown = {};
+
+                invoices.forEach(inv => {
+                    monthlyBreakdown[inv.month] = (monthlyBreakdown[inv.month] || 0) + 1;
+                    partnerBreakdown[inv.partnerName] = (partnerBreakdown[inv.partnerName] || 0) + 1;
+                });
+
+                html += `<div class="customer-section" data-customer="${customer}">`;
+                html += `<h4 class="mt-4">${customer}</h4>`;
+                html += `<div class="row mb-3">`;
+                html += `<div class="col-md-4"><strong>Total Invoices:</strong> ${invoices.length.toLocaleString()}</div>`;
+                html += `<div class="col-md-4"><strong>Trading Partners:</strong> ${Object.keys(partnerBreakdown).length}</div>`;
+                html += `<div class="col-md-4"><strong>Countries:</strong> ${new Set(invoices.map(i => i.receiverCountry)).size}</div>`;
+                html += `</div>`;
+
+                // Monthly breakdown chart
+                html += `<div class="chart-container" style="height: 300px;"><canvas id="customer_${customer.replace(/\s+/g, '_')}"></canvas></div>`;
+
+                // Trading partners table with expand/collapse
+                const customerId = customer.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+                const sortedPartners = Object.entries(partnerBreakdown).sort((a, b) => b[1] - a[1]);
+                const top10Partners = sortedPartners.slice(0, 10);
+                const remainingPartners = sortedPartners.slice(10);
+
+                html += `<div class="d-flex justify-content-between align-items-center mt-3">`;
+                html += `<h5 class="mb-0">Trading Partners (${sortedPartners.length})</h5>`;
+                if (sortedPartners.length > 10) {
+                    html += `<button class="btn btn-sm btn-outline-primary" onclick="togglePartners('${customerId}')">
+                        <span id="btn_${customerId}">Show All (${sortedPartners.length})</span>
+                    </button>`;
+                }
+                html += `</div>`;
+
+                html += '<div class="table-container">';
+                html += '<table class="table table-sm table-hover">';
+                html += '<thead><tr><th>Partner</th><th>Invoices</th><th>Percentage</th></tr></thead>';
+
+                // Top 10 partners (always visible)
+                html += '<tbody>';
+                top10Partners.forEach(([partner, count]) => {
+                    const percentage = (count / invoices.length * 100).toFixed(1);
+                    html += `<tr>
+                        <td>${partner}</td>
+                        <td>${count.toLocaleString()}</td>
+                        <td>
+                            <div class="progress-custom">
+                                <div class="progress-bar-custom" style="width: ${percentage}%">${percentage}%</div>
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+                html += '</tbody>';
+
+                // Remaining partners (hidden by default)
+                if (remainingPartners.length > 0) {
+                    html += `<tbody id="extra_${customerId}" style="display: none;">`;
+                    remainingPartners.forEach(([partner, count]) => {
+                        const percentage = (count / invoices.length * 100).toFixed(1);
+                        html += `<tr>
+                            <td>${partner}</td>
+                            <td>${count.toLocaleString()}</td>
+                            <td>
+                                <div class="progress-custom">
+                                    <div class="progress-bar-custom" style="width: ${percentage}%">${percentage}%</div>
+                                </div>
+                            </td>
+                        </tr>`;
+                    });
+                    html += '</tbody>';
+                }
+
+                html += '</table></div></div>';
+            });
+
+            html += '</div>';
+
+            container.innerHTML = html;
+
+            // Render customer charts
+            Object.entries(customerGroups).forEach(([customer, invoices]) => {
+                renderCustomerChart(customer, invoices);
+            });
+
+            // Add filter listener
+            document.getElementById('customerFilter').addEventListener('change', (e) => {
+                const selected = e.target.value;
+                document.querySelectorAll('.customer-section').forEach(section => {
+                    if (selected === 'all' || section.dataset.customer === selected) {
+                        section.style.display = 'block';
+                    } else {
+                        section.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        function renderCustomerChart(customer, invoices) {
+            const canvasId = `customer_${customer.replace(/\s+/g, '_')}`;
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+
+            const monthlyData = {};
+            invoices.forEach(inv => {
+                monthlyData[inv.month] = (monthlyData[inv.month] || 0) + 1;
+            });
+
+            const sortedMonths = Object.keys(monthlyData).sort();
+            const data = sortedMonths.map(m => monthlyData[m]);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedMonths,
+                    datasets: [{
+                        label: 'Invoices per Month',
+                        data: data,
+                        backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                        borderColor: '#667eea',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderPartnerEntities() {
+            const container = document.getElementById('partnerEntities');
+
+            // Group data by trading partner
+            const partnerGroups = {};
+            processedData.forEach(row => {
+                if (!partnerGroups[row.partnerName]) {
+                    partnerGroups[row.partnerName] = [];
+                }
+                partnerGroups[row.partnerName].push(row);
+            });
+
+            let html = '<h3 class="mb-4">Trading Partner Entities Analysis</h3>';
+
+            // Overall statistics
+            const totalPartners = Object.keys(partnerGroups).filter(p => p !== 'Unknown Partner').length;
+            const totalInvoices = processedData.filter(d => d.partnerName !== 'Unknown Partner').length;
+            const avgInvoicesPerPartner = (totalInvoices / totalPartners).toFixed(1);
+
+            html += '<div class="row mb-4">';
+            html += `<div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-label">Total Trading Partners</div>
+                    <div class="stat-value">${totalPartners}</div>
+                </div>
+            </div>`;
+            html += `<div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-label">Total Invoices</div>
+                    <div class="stat-value">${totalInvoices.toLocaleString()}</div>
+                </div>
+            </div>`;
+            html += `<div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-label">Avg Invoices per Partner</div>
+                    <div class="stat-value">${avgInvoicesPerPartner}</div>
+                </div>
+            </div>`;
+            html += '</div>';
+
+            // Top Partners Chart
+            html += '<div class="d-flex justify-content-between align-items-center mt-4 mb-3">';
+            html += '<h4 class="mb-0">Top Trading Partners by Volume</h4>';
+            html += '<button class="btn btn-sm btn-outline-primary" onclick="toggleTopPartnersChart()">';
+            html += '<span id="topPartnersChartBtn">Show All Partners</span>';
+            html += '</button>';
+            html += '</div>';
+            html += '<div class="chart-container"><canvas id="topPartnersChart"></canvas></div>';
+
+            // Filter section with search and multi-select
+            html += '<div class="filter-section mt-5">';
+            html += '<h5 class="mb-3">Filter Options</h5>';
+
+            // Row 1: Date Range and Customer Entity
+            html += '<div class="row mb-3">';
+            html += '<div class="col-md-6">';
+            html += '<label class="form-label fw-bold">Date Range:</label>';
+            html += '<div class="row">';
+            html += '<div class="col-6">';
+            html += '<input type="date" id="partnerDateStart" class="form-control" placeholder="Start Date">';
+            html += '<small class="text-muted">From</small>';
+            html += '</div>';
+            html += '<div class="col-6">';
+            html += '<input type="date" id="partnerDateEnd" class="form-control" placeholder="End Date">';
+            html += '<small class="text-muted">To</small>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '<div class="col-md-6">';
+            html += '<label class="form-label fw-bold">Filter by Customer Entity: <span id="customerEntityCount" class="badge bg-secondary">All</span></label>';
+            html += '<select id="customerEntityFilter" class="form-select" multiple size="4">';
+            html += '<option value="all" selected>All Customer Entities</option>';
+
+            // Get unique customer entities from the data
+            const uniqueCustomers = [...new Set(processedData.map(d => d.customerName))].filter(c => c !== 'Unknown Customer').sort();
+            uniqueCustomers.forEach(customer => {
+                html += `<option value="${customer}">${customer}</option>`;
+            });
+            html += '</select>';
+            html += '<small class="text-muted mt-1 d-block">Hold Ctrl/Cmd to select multiple</small>';
+            html += '</div>';
+            html += '</div>';
+
+            // Row 2: Partner Search and Selection
+            html += '<div class="row">';
+            html += '<div class="col-md-6">';
+            html += '<label class="form-label fw-bold">Search Trading Partners:</label>';
+            html += '<input type="text" id="partnerSearchInput" class="form-control" placeholder="Type to filter dropdown...">';
+            html += '<small class="text-muted mt-1 d-block">Search to filter the dropdown list</small>';
+            html += '</div>';
+            html += '<div class="col-md-6">';
+            html += '<label class="form-label fw-bold">Select Trading Partners: <span id="partnerSelectionCount" class="badge bg-secondary">All</span></label>';
+            html += '<select id="partnerFilter" class="form-select" multiple size="4">';
+            html += '<option value="all" selected>All Trading Partners</option>';
+            Object.keys(partnerGroups).filter(p => p !== 'Unknown Partner').sort().forEach(partner => {
+                html += `<option value="${partner}">${partner}</option>`;
+            });
+            html += '</select>';
+            html += '<small class="text-muted mt-1 d-block">Hold Ctrl/Cmd to select multiple partners</small>';
+            html += '</div>';
+            html += '</div>';
+
+            // Clear filters button
+            html += '<div class="row mt-3">';
+            html += '<div class="col-12">';
+            html += '<button class="btn btn-sm btn-outline-secondary" onclick="clearPartnerFilters()">Clear All Filters</button>';
+            html += '</div>';
+            html += '</div>';
+
+            html += '</div>';
+
+            // Filter status message
+            html += '<div id="partnerFilterStatus" class="alert alert-info mt-4" style="display: none;"></div>';
+
+            // Partner details sections
+            html += '<div id="partnerDetails">';
+
+            Object.entries(partnerGroups)
+                .filter(([partner]) => partner !== 'Unknown Partner')
+                .sort((a, b) => b[1].length - a[1].length)
+                .forEach(([partner, invoices]) => {
+                const monthlyBreakdown = {};
+                const customerBreakdown = {};
+                const countryBreakdown = {};
+
+                invoices.forEach(inv => {
+                    monthlyBreakdown[inv.month] = (monthlyBreakdown[inv.month] || 0) + 1;
+                    customerBreakdown[inv.customerName] = (customerBreakdown[inv.customerName] || 0) + 1;
+                    countryBreakdown[inv.senderCountry] = (countryBreakdown[inv.senderCountry] || 0) + 1;
+                });
+
+                const uniqueCustomers = Object.keys(customerBreakdown).length;
+                const uniqueCountries = Object.keys(countryBreakdown).length;
+
+                html += `<div class="partner-section" data-partner="${partner}">`;
+                html += `<h4 class="mt-5">${partner}</h4>`;
+                html += `<div class="row mb-3">`;
+                html += `<div class="col-md-4"><strong>Total Invoices:</strong> ${invoices.length.toLocaleString()}</div>`;
+                html += `<div class="col-md-4"><strong>Customer Entities:</strong> ${uniqueCustomers}</div>`;
+                html += `<div class="col-md-4"><strong>Sender Countries:</strong> ${uniqueCountries}</div>`;
+                html += `</div>`;
+
+                // Monthly breakdown chart
+                html += `<div class="chart-container" style="height: 300px;"><canvas id="partner_${partner.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '_')}"></canvas></div>`;
+
+                // Top customers table with expand/collapse
+                const partnerId = partner.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '_');
+                const sortedCustomers = Object.entries(customerBreakdown).sort((a, b) => b[1] - a[1]);
+                const top10Customers = sortedCustomers.slice(0, 10);
+                const remainingCustomers = sortedCustomers.slice(10);
+
+                html += `<div class="d-flex justify-content-between align-items-center mt-3">`;
+                html += `<h5 class="mb-0">Customer Entities (${sortedCustomers.length})</h5>`;
+                if (sortedCustomers.length > 10) {
+                    html += `<button class="btn btn-sm btn-outline-primary" onclick="togglePartnerCustomers('${partnerId}')">
+                        <span id="btn_partner_${partnerId}">Show All (${sortedCustomers.length})</span>
+                    </button>`;
+                }
+                html += `</div>`;
+
+                html += '<div class="table-container">';
+                html += '<table class="table table-sm table-hover">';
+                html += '<thead><tr><th>Customer Entity</th><th>Invoices</th><th>Percentage</th></tr></thead>';
+
+                // Top 10 customers (always visible)
+                html += '<tbody>';
+                top10Customers.forEach(([customer, count]) => {
+                    const percentage = (count / invoices.length * 100).toFixed(1);
+                    html += `<tr>
+                        <td>${customer}</td>
+                        <td>${count.toLocaleString()}</td>
+                        <td>
+                            <div class="progress-custom">
+                                <div class="progress-bar-custom" style="width: ${percentage}%">${percentage}%</div>
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+                html += '</tbody>';
+
+                // Remaining customers (hidden by default)
+                if (remainingCustomers.length > 0) {
+                    html += `<tbody id="extra_partner_${partnerId}" style="display: none;">`;
+                    remainingCustomers.forEach(([customer, count]) => {
+                        const percentage = (count / invoices.length * 100).toFixed(1);
+                        html += `<tr>
+                            <td>${customer}</td>
+                            <td>${count.toLocaleString()}</td>
+                            <td>
+                                <div class="progress-custom">
+                                    <div class="progress-bar-custom" style="width: ${percentage}%">${percentage}%</div>
+                                </div>
+                            </td>
+                        </tr>`;
+                    });
+                    html += '</tbody>';
+                }
+
+                html += '</table></div>';
+
+                html += '</div>';
+            });
+
+            html += '</div>';
+
+            container.innerHTML = html;
+
+            // Store partner groups globally for chart toggling and filtering
+            allPartnerGroups = partnerGroups;
+            showingAllPartners = false;
+            // Store original partner list for filtering
+            allPartnersList = Object.keys(partnerGroups).filter(p => p !== 'Unknown Partner').sort();
+
+            // Render top partners chart (initially top 15)
+            renderTopPartnersChart(15);
+
+            // Render individual partner charts
+            Object.entries(partnerGroups)
+                .filter(([partner]) => partner !== 'Unknown Partner')
+                .forEach(([partner, invoices]) => {
+                    renderPartnerChart(partner, invoices);
+                });
+
+            // Add search filter listener to filter dropdown options
+            document.getElementById('partnerSearchInput').addEventListener('input', (e) => {
+                // Reapply all filters (which will respect the search term)
+                applyPartnerFilters();
+            });
+
+            // Add dropdown selection listener to filter partner sections
+            document.getElementById('partnerFilter').addEventListener('change', (e) => {
+                const selectedOptions = Array.from(e.target.selectedOptions).map(opt => opt.value);
+
+                // If "All" is selected, deselect everything else
+                if (selectedOptions.length > 1 && selectedOptions.includes('all')) {
+                    const dropdown = document.getElementById('partnerFilter');
+                    Array.from(dropdown.options).forEach(opt => {
+                        if (opt.value !== 'all') {
+                            opt.selected = false;
+                        }
+                    });
+                }
+
+                // If specific partners are selected, deselect "All"
+                if (selectedOptions.length > 1 && selectedOptions[0] !== 'all') {
+                    const dropdown = document.getElementById('partnerFilter');
+                    const allOption = dropdown.querySelector('option[value="all"]');
+                    if (allOption) allOption.selected = false;
+                }
+
+                updatePartnerSelectionBadge();
+                applyPartnerFilters();
+            });
+
+            // Add customer entity filter listener
+            document.getElementById('customerEntityFilter').addEventListener('change', (e) => {
+                const selectedOptions = Array.from(e.target.selectedOptions).map(opt => opt.value);
+
+                // If "All" is selected, deselect everything else
+                if (selectedOptions.length > 1 && selectedOptions.includes('all')) {
+                    const dropdown = document.getElementById('customerEntityFilter');
+                    Array.from(dropdown.options).forEach(opt => {
+                        if (opt.value !== 'all') {
+                            opt.selected = false;
+                        }
+                    });
+                }
+
+                // If specific customers are selected, deselect "All"
+                if (selectedOptions.length > 1 && selectedOptions[0] !== 'all') {
+                    const dropdown = document.getElementById('customerEntityFilter');
+                    const allOption = dropdown.querySelector('option[value="all"]');
+                    if (allOption) allOption.selected = false;
+                }
+
+                updateCustomerEntityBadge();
+                applyPartnerFilters();
+            });
+
+            // Add date filter listeners
+            document.getElementById('partnerDateStart').addEventListener('change', applyPartnerFilters);
+            document.getElementById('partnerDateEnd').addEventListener('change', applyPartnerFilters);
+        }
+
+        function updatePartnerSelectionBadge() {
+            const finalSelection = Array.from(document.getElementById('partnerFilter').selectedOptions).map(opt => opt.value);
+            const finalShowAll = finalSelection.includes('all');
+
+            const countBadge = document.getElementById('partnerSelectionCount');
+            if (countBadge) {
+                if (finalShowAll) {
+                    countBadge.textContent = 'All';
+                    countBadge.className = 'badge bg-secondary';
+                } else if (finalSelection.length === 0) {
+                    countBadge.textContent = 'None';
+                    countBadge.className = 'badge bg-warning';
+                } else {
+                    countBadge.textContent = finalSelection.length;
+                    countBadge.className = 'badge bg-primary';
+                }
+            }
+        }
+
+        function updateCustomerEntityBadge() {
+            const finalSelection = Array.from(document.getElementById('customerEntityFilter').selectedOptions).map(opt => opt.value);
+            const finalShowAll = finalSelection.includes('all');
+
+            const countBadge = document.getElementById('customerEntityCount');
+            if (countBadge) {
+                if (finalShowAll) {
+                    countBadge.textContent = 'All';
+                    countBadge.className = 'badge bg-secondary';
+                } else if (finalSelection.length === 0) {
+                    countBadge.textContent = 'None';
+                    countBadge.className = 'badge bg-warning';
+                } else {
+                    countBadge.textContent = finalSelection.length;
+                    countBadge.className = 'badge bg-primary';
+                }
+            }
+        }
+
+        function applyPartnerFilters() {
+            // Get all filter values
+            const partnerSelection = Array.from(document.getElementById('partnerFilter').selectedOptions).map(opt => opt.value);
+            const customerSelection = Array.from(document.getElementById('customerEntityFilter').selectedOptions).map(opt => opt.value);
+            const dateStart = document.getElementById('partnerDateStart').value;
+            const dateEnd = document.getElementById('partnerDateEnd').value;
+
+            const showAllPartners = partnerSelection.includes('all');
+            const showAllCustomers = customerSelection.includes('all');
+
+            // Parse dates if provided
+            let startDate = dateStart ? new Date(dateStart) : null;
+            let endDate = dateEnd ? new Date(dateEnd) : null;
+
+            // Step 1: Calculate which partners have matching invoices based on customer/date filters
+            const eligiblePartners = new Set();
+
+            allPartnersList.forEach(partnerName => {
+                const partnerInvoices = processedData.filter(row => row.partnerName === partnerName);
+
+                // Apply customer and date filters to find if this partner has any matching invoices
+                const matchingInvoices = partnerInvoices.filter(invoice => {
+                    // Check customer filter
+                    if (!showAllCustomers && !customerSelection.includes(invoice.customerName)) {
+                        return false;
+                    }
+
+                    // Check date filter
+                    if (invoice.invoiceDate) {
+                        if (startDate && invoice.invoiceDate < startDate) {
+                            return false;
+                        }
+                        if (endDate) {
+                            const endOfDay = new Date(endDate);
+                            endOfDay.setHours(23, 59, 59, 999);
+                            if (invoice.invoiceDate > endOfDay) {
+                                return false;
+                            }
+                        }
+                    }
+
+                    return true;
+                });
+
+                // If this partner has matching invoices, add to eligible list
+                if (matchingInvoices.length > 0) {
+                    eligiblePartners.add(partnerName);
+                }
+            });
+
+            // Step 2: Update the "Select Trading Partners" dropdown to only show eligible partners
+            const partnerDropdown = document.getElementById('partnerFilter');
+            const currentSearch = document.getElementById('partnerSearchInput').value.toLowerCase();
+
+            Array.from(partnerDropdown.options).forEach(option => {
+                if (option.value === 'all') {
+                    option.style.display = '';
+                } else {
+                    // Show only if eligible AND matches search
+                    const matchesSearch = currentSearch === '' || option.textContent.toLowerCase().includes(currentSearch);
+                    const isEligible = eligiblePartners.has(option.value);
+
+                    if (isEligible && matchesSearch) {
+                        option.style.display = '';
+                    } else {
+                        option.style.display = 'none';
+                        // Deselect if no longer eligible
+                        if (!isEligible && option.selected) {
+                            option.selected = false;
+                        }
+                    }
+                }
+            });
+
+            // Update badge after potential deselection
+            updatePartnerSelectionBadge();
+
+            // Step 3: Update the Top Partners chart with only eligible partners
+            updateTopPartnersChartWithFilters(eligiblePartners);
+
+            // Step 4: Update partner sections visibility based on partner selection
+            const finalPartnerSelection = Array.from(document.getElementById('partnerFilter').selectedOptions).map(opt => opt.value);
+            const finalShowAllPartners = finalPartnerSelection.includes('all');
+
+            let visibleCount = 0;
+            document.querySelectorAll('.partner-section').forEach(section => {
+                const partnerName = section.dataset.partner;
+                let shouldShow = false;
+
+                // Partner must be eligible from customer/date filters
+                if (eligiblePartners.has(partnerName)) {
+                    // And must be selected in dropdown (or "All" is selected)
+                    if (finalShowAllPartners || finalPartnerSelection.includes(partnerName)) {
+                        shouldShow = true;
+                        visibleCount++;
+                    }
+                }
+
+                section.style.display = shouldShow ? 'block' : 'none';
+            });
+
+            // Step 5: Update filter status message
+            updatePartnerFilterStatus(eligiblePartners.size, allPartnersList.length, visibleCount);
+        }
+
+        function updatePartnerFilterStatus(eligibleCount, totalCount, visibleCount) {
+            const statusDiv = document.getElementById('partnerFilterStatus');
+            if (!statusDiv) return;
+
+            const hasFilters = eligibleCount < totalCount;
+
+            if (hasFilters) {
+                statusDiv.style.display = 'block';
+                statusDiv.innerHTML = `
+                    <strong>Filters Active:</strong>
+                    Showing ${visibleCount} of ${eligibleCount} matching partners
+                    (${totalCount - eligibleCount} partners filtered out by customer/date criteria)
+                `;
+            } else {
+                statusDiv.style.display = 'none';
+            }
+        }
+
+        function updateTopPartnersChartWithFilters(eligiblePartners) {
+            if (!allPartnerGroups) return;
+
+            // Create a filtered partner groups object
+            const filteredPartnerGroups = {};
+            eligiblePartners.forEach(partner => {
+                if (allPartnerGroups[partner]) {
+                    filteredPartnerGroups[partner] = allPartnerGroups[partner];
+                }
+            });
+
+            // Store for chart rendering
+            const previousGroups = allPartnerGroups;
+            allPartnerGroups = filteredPartnerGroups;
+
+            // Re-render chart (respecting current show all/top 15 state)
+            if (showingAllPartners) {
+                renderTopPartnersChart(null);
+            } else {
+                renderTopPartnersChart(15);
+            }
+
+            // Restore full groups
+            allPartnerGroups = previousGroups;
+        }
+
+        function clearPartnerFilters() {
+            // Reset customer entity selection FIRST (before partner selection)
+            const customerDropdown = document.getElementById('customerEntityFilter');
+            Array.from(customerDropdown.options).forEach(opt => {
+                opt.selected = opt.value === 'all';
+            });
+
+            // Reset date inputs
+            document.getElementById('partnerDateStart').value = '';
+            document.getElementById('partnerDateEnd').value = '';
+
+            // Reset search
+            document.getElementById('partnerSearchInput').value = '';
+
+            // Update customer badge
+            updateCustomerEntityBadge();
+
+            // Apply filters to update dropdown with all eligible partners
+            applyPartnerFilters();
+
+            // NOW reset partner selection to "All" after dropdown is repopulated
+            const partnerDropdown = document.getElementById('partnerFilter');
+            Array.from(partnerDropdown.options).forEach(opt => {
+                opt.selected = opt.value === 'all';
+            });
+
+            // Update partner badge
+            updatePartnerSelectionBadge();
+
+            // Apply filters one more time with "All" selected
+            applyPartnerFilters();
+        }
+
+        function renderTopPartnersChart(limit = 15) {
+            const ctx = document.getElementById('topPartnersChart');
+            if (!ctx || !allPartnerGroups) return;
+
+            // Get partners by invoice count
+            const sortedPartners = Object.entries(allPartnerGroups)
+                .filter(([partner]) => partner !== 'Unknown Partner')
+                .sort((a, b) => b[1].length - a[1].length);
+
+            // Slice based on limit (or show all if limit is null/undefined)
+            const partnersToShow = limit ? sortedPartners.slice(0, limit) : sortedPartners;
+
+            const labels = partnersToShow.map(([partner]) => partner);
+            const data = partnersToShow.map(([, invoices]) => invoices.length);
+
+            // Destroy existing chart if it exists
+            if (charts.topPartners) charts.topPartners.destroy();
+
+            charts.topPartners = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Invoices',
+                        data: data,
+                        backgroundColor: 'rgba(118, 75, 162, 0.7)',
+                        borderColor: '#764ba2',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Invoices: ${context.parsed.x.toLocaleString()}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function toggleTopPartnersChart() {
+            showingAllPartners = !showingAllPartners;
+            const button = document.getElementById('topPartnersChartBtn');
+
+            if (showingAllPartners) {
+                // Show all partners
+                renderTopPartnersChart(null);
+                button.textContent = 'Show Top 15';
+            } else {
+                // Show top 15
+                renderTopPartnersChart(15);
+                button.textContent = 'Show All Partners';
+            }
+        }
+
+        function renderPartnerChart(partner, invoices) {
+            const canvasId = `partner_${partner.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '_')}`;
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+
+            const monthlyData = {};
+            invoices.forEach(inv => {
+                monthlyData[inv.month] = (monthlyData[inv.month] || 0) + 1;
+            });
+
+            const sortedMonths = Object.keys(monthlyData).sort();
+            const data = sortedMonths.map(m => monthlyData[m]);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedMonths,
+                    datasets: [{
+                        label: 'Invoices per Month',
+                        data: data,
+                        backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                        borderColor: '#667eea',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function togglePartnerCustomers(partnerId) {
+            const extraRows = document.getElementById(`extra_partner_${partnerId}`);
+            const button = document.getElementById(`btn_partner_${partnerId}`);
+
+            if (extraRows.style.display === 'none') {
+                extraRows.style.display = '';
+                button.textContent = 'Show Top 10';
+            } else {
+                extraRows.style.display = 'none';
+                const table = extraRows.closest('table');
+                const totalCustomers = table.querySelectorAll('tbody').length > 1 ?
+                    table.querySelectorAll('tbody')[0].querySelectorAll('tr').length +
+                    table.querySelectorAll('tbody')[1].querySelectorAll('tr').length :
+                    table.querySelectorAll('tbody tr').length;
+                button.textContent = `Show All (${totalCustomers})`;
+            }
+        }
+
+        function renderAnalysisTab() {
+            const container = document.getElementById('analysisContent');
+
+            // Perform all analysis
+            const trendAnalysis = performTrendAnalysis();
+            const anomalyAnalysis = performAnomalyDetection();
+            const forecastAnalysis = performForecasting();
+
+            let html = '<h3 class="mb-4">Advanced Analytics & Forecasting</h3>';
+
+            // Summary Cards
+            html += '<div class="row mb-4">';
+            html += `<div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-label">Growing Partners</div>
+                    <div class="stat-value">${trendAnalysis.partners.growing.length}</div>
+                    <small>+20% or more growth</small>
+                </div>
+            </div>`;
+            html += `<div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">
+                    <div class="stat-label">Declining Partners</div>
+                    <div class="stat-value">${trendAnalysis.partners.declining.length}</div>
+                    <small>-20% or more decline</small>
+                </div>
+            </div>`;
+            html += `<div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);">
+                    <div class="stat-label">Anomalies Detected</div>
+                    <div class="stat-value">${anomalyAnalysis.totalAnomalies}</div>
+                    <small>Statistical outliers</small>
+                </div>
+            </div>`;
+            html += `<div class="col-md-3">
+                <div class="stat-card" style="background: linear-gradient(135deg, #27ae60 0%, #229954 100%);">
+                    <div class="stat-label">Forecast Trend</div>
+                    <div class="stat-value">${forecastAnalysis.overallTrend > 0 ? '+' : ''}${forecastAnalysis.overallTrend.toFixed(1)}%</div>
+                    <small>Next 3 months</small>
+                </div>
+            </div>`;
+            html += '</div>';
+
+            // Key Insights
+            html += '<h4 class="mt-4 mb-3">Intelligence Insights</h4>';
+            const insights = generateAnalysisInsights(trendAnalysis, anomalyAnalysis, forecastAnalysis);
+            insights.forEach(insight => {
+                html += `<div class="insight-card ${insight.type}">${insight.message}</div>`;
+            });
+
+            // Trend Analysis Section
+            html += `<h4 class="mt-5 mb-3">Trend Analysis (±${analysisConfig.trendThresholdPercent}% Threshold)</h4>`;
+            html += `<p class="text-muted mb-4">Compares the most recent ${analysisConfig.trendComparisonMonths} months average against the previous ${analysisConfig.trendComparisonMonths} months to identify significant changes in invoice volume. Partners/customers showing ≥${analysisConfig.trendThresholdPercent}% change are flagged as growing or declining.</p>`;
+
+            html += '<div class="row">';
+            html += '<div class="col-md-6">';
+            html += '<h5>Top 10 Growing Partners</h5>';
+            html += '<p class="text-muted small mb-2">These trading partners have increased their invoice volume by 20% or more. Consider strengthening these relationships and ensuring service capacity meets growing demand.</p>';
+            html += '<div class="table-container">';
+            html += '<table class="table table-sm table-hover">';
+            html += '<thead><tr><th>Partner</th><th>Growth</th><th>Previous Volume</th><th>Current Volume</th></tr></thead>';
+            html += '<tbody>';
+            trendAnalysis.partners.growing.slice(0, 10).forEach(item => {
+                html += `<tr>
+                    <td>${item.name}</td>
+                    <td><span class="trend-up">+${item.change.toFixed(1)}%</span></td>
+                    <td>${item.previous.toFixed(0)}</td>
+                    <td>${item.current.toFixed(0)}</td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+            html += '</div>';
+
+            html += '<div class="col-md-6">';
+            html += '<h5>Top 10 Declining Partners</h5>';
+            html += '<p class="text-muted small mb-2">These trading partners have decreased their invoice volume by 20% or more. Investigate potential issues, service quality concerns, or market changes affecting these relationships.</p>';
+            html += '<div class="table-container">';
+            html += '<table class="table table-sm table-hover">';
+            html += '<thead><tr><th>Partner</th><th>Decline</th><th>Previous Volume</th><th>Current Volume</th></tr></thead>';
+            html += '<tbody>';
+            trendAnalysis.partners.declining.slice(0, 10).forEach(item => {
+                html += `<tr>
+                    <td>${item.name}</td>
+                    <td><span class="trend-down">${item.change.toFixed(1)}%</span></td>
+                    <td>${item.previous.toFixed(0)}</td>
+                    <td>${item.current.toFixed(0)}</td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+            html += '</div>';
+            html += '</div>';
+
+            // Overall Volume Trend Chart
+            html += '<h5 class="mt-4 mb-3">Overall Volume Trend</h5>';
+            html += '<p class="text-muted mb-3">Shows the total number of invoices processed each month across all trading partners. Use this to identify seasonal patterns, overall business growth, or capacity planning needs.</p>';
+            html += '<div class="chart-container"><canvas id="volumeTrendChart"></canvas></div>';
+
+            // Customer Entity Trends
+            html += '<h5 class="mt-4 mb-3">Customer Entity Trends</h5>';
+            html += '<p class="text-muted mb-3">Displays trend direction for each customer entity. The arrow (↑/↓/→) indicates significant growth, decline, or stable volume. The percentage shows the exact change comparing recent activity to the previous period.</p>';
+            html += '<div class="table-container">';
+            html += '<table class="table table-sm table-hover">';
+            html += '<thead><tr><th>Customer</th><th>Trend</th><th>Change</th><th>Current Volume</th></tr></thead>';
+            html += '<tbody>';
+            trendAnalysis.customers.all.forEach(item => {
+                let trendClass = 'trend-neutral';
+                let trendIcon = '→';
+                if (item.change >= analysisConfig.trendThresholdPercent) {
+                    trendClass = 'trend-up';
+                    trendIcon = '↑';
+                } else if (item.change <= -analysisConfig.trendThresholdPercent) {
+                    trendClass = 'trend-down';
+                    trendIcon = '↓';
+                }
+                html += `<tr>
+                    <td>${item.name}</td>
+                    <td><span class="${trendClass}">${trendIcon}</span></td>
+                    <td><span class="${trendClass}">${item.change > 0 ? '+' : ''}${item.change.toFixed(1)}%</span></td>
+                    <td>${item.current.toLocaleString()}</td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+
+            // Top Route Trends
+            html += '<h5 class="mt-4 mb-3">Top Country Route Trends</h5>';
+            html += '<p class="text-muted mb-3">Analyzes the busiest invoice routes between countries to identify geographic trends. Growing routes may indicate new market opportunities, while declining routes could signal regional challenges or shifts in trade patterns.</p>';
+            html += '<div class="table-container">';
+            html += '<table class="table table-sm table-hover">';
+            html += '<thead><tr><th>Route</th><th>Trend</th><th>Change</th><th>Current Volume</th></tr></thead>';
+            html += '<tbody>';
+            trendAnalysis.routes.slice(0, 15).forEach(item => {
+                let trendClass = 'trend-neutral';
+                let trendIcon = '→';
+                if (item.change >= analysisConfig.trendThresholdPercent) {
+                    trendClass = 'trend-up';
+                    trendIcon = '↑';
+                } else if (item.change <= -analysisConfig.trendThresholdPercent) {
+                    trendClass = 'trend-down';
+                    trendIcon = '↓';
+                }
+                html += `<tr>
+                    <td>${item.name}</td>
+                    <td><span class="${trendClass}">${trendIcon}</span></td>
+                    <td><span class="${trendClass}">${item.change > 0 ? '+' : ''}${item.change.toFixed(1)}%</span></td>
+                    <td>${item.current.toLocaleString()}</td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+
+            // Anomaly Detection Section
+            html += '<h4 class="mt-5 mb-3">Anomaly Detection</h4>';
+            html += `<p class="text-muted mb-4">Statistical analysis identifies unusual patterns using the "${analysisConfig.anomalyDetectionSigma}-sigma rule" - highlighting months or partners where volume falls outside ${analysisConfig.anomalyDetectionSigma} standard deviations (σ) from the historical mean. These outliers may indicate special events, data issues, or opportunities requiring investigation.</p>`;
+
+            if (anomalyAnalysis.monthlyAnomalies.length > 0) {
+                html += '<h5 class="mb-3">Monthly Volume Anomalies</h5>';
+                html += '<p class="text-muted small mb-2">These months show statistically unusual total invoice volumes. Spikes may indicate promotions, seasonal peaks, or system migrations. Drops could signal operational issues, holidays, or market disruptions.</p>';
+                html += '<div class="table-container">';
+                html += '<table class="table table-sm table-hover">';
+                html += '<thead><tr><th>Month</th><th>Volume</th><th>Expected Range</th><th>Deviation</th></tr></thead>';
+                html += '<tbody>';
+                anomalyAnalysis.monthlyAnomalies.forEach(anomaly => {
+                    html += `<tr style="background: #fff3cd;">
+                        <td>${anomaly.month}</td>
+                        <td><strong>${anomaly.value.toLocaleString()}</strong></td>
+                        <td>${anomaly.expectedMin.toFixed(0)} - ${anomaly.expectedMax.toFixed(0)}</td>
+                        <td><span class="${anomaly.value > anomaly.expectedMax ? 'trend-up' : 'trend-down'}">
+                            ${anomaly.deviation.toFixed(1)}σ
+                        </span></td>
+                    </tr>`;
+                });
+                html += '</tbody></table></div>';
+            } else {
+                html += '<div class="insight-card positive">No volume anomalies detected - invoice volume is consistent and predictable.</div>';
+            }
+
+            // Partner Anomalies
+            if (anomalyAnalysis.partnerAnomalies.length > 0) {
+                html += '<h5 class="mt-4 mb-3">Partner Volume Anomalies (Top 20)</h5>';
+                html += '<p class="text-muted small mb-2">These partner-month combinations show unusual activity compared to each partner\'s typical behavior. Review these cases to understand if they represent one-off events, new business patterns, or potential data quality issues.</p>';
+                html += '<div class="table-container">';
+                html += '<table class="table table-sm table-hover">';
+                html += '<thead><tr><th>Partner</th><th>Month</th><th>Volume</th><th>Typical Range</th></tr></thead>';
+                html += '<tbody>';
+                anomalyAnalysis.partnerAnomalies.slice(0, 20).forEach(anomaly => {
+                    html += `<tr style="background: #fff3cd;">
+                        <td>${anomaly.partner}</td>
+                        <td>${anomaly.month}</td>
+                        <td><strong>${anomaly.value.toLocaleString()}</strong></td>
+                        <td>${anomaly.expectedMin.toFixed(0)} - ${anomaly.expectedMax.toFixed(0)}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table></div>';
+            }
+
+            // Forecasting Section
+            html += `<h4 class="mt-5 mb-3">Forecast - Next ${analysisConfig.forecastHorizonMonths} Months</h4>`;
+            html += '<p class="text-muted mb-4">Uses linear regression on historical data to predict future invoice volumes. The forecast shows expected trends based on past patterns. Use these projections for capacity planning, resource allocation, and identifying partners likely to need increased support.</p>';
+
+            html += '<h5 class="mb-3">Overall Volume Forecast</h5>';
+            html += `<p class="text-muted small mb-2">The chart shows historical invoice volume (solid blue line) and predicted volume for the next ${analysisConfig.forecastHorizonMonths} months (dashed green line). The forecast assumes current trends continue - actual results may vary based on business changes, seasonality, or market conditions.</p>`;
+            html += '<div class="chart-container"><canvas id="forecastChart"></canvas></div>';
+
+            // Top Partners Forecast
+            html += '<h5 class="mt-4 mb-3">Top 10 Partners - Forecasted Volume</h5>';
+            html += '<p class="text-muted small mb-2">Compares each partner\'s current 3-month average against their forecasted 3-month average. Positive trends suggest growing partnerships requiring proactive account management and capacity preparation.</p>';
+            html += '<div class="table-container">';
+            html += '<table class="table table-sm table-hover">';
+            html += '<thead><tr><th>Partner</th><th>Current Avg</th><th>Forecasted Avg</th><th>Trend</th></tr></thead>';
+            html += '<tbody>';
+            forecastAnalysis.topPartners.slice(0, 10).forEach(item => {
+                const trendClass = item.trend > 0 ? 'trend-up' : (item.trend < 0 ? 'trend-down' : 'trend-neutral');
+                html += `<tr>
+                    <td>${item.name}</td>
+                    <td>${item.currentAvg.toFixed(0)}</td>
+                    <td>${item.forecastAvg.toFixed(0)}</td>
+                    <td><span class="${trendClass}">${item.trend > 0 ? '+' : ''}${item.trend.toFixed(1)}%</span></td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+
+            // Top Customers Forecast
+            html += '<h5 class="mt-4 mb-3">Top 10 Customers - Forecasted Volume</h5>';
+            html += '<p class="text-muted small mb-2">Shows expected invoice volume changes for your largest customer entities. Use this to anticipate internal resource needs and align service delivery with projected demand from each business unit.</p>';
+            html += '<div class="table-container">';
+            html += '<table class="table table-sm table-hover">';
+            html += '<thead><tr><th>Customer</th><th>Current Avg</th><th>Forecasted Avg</th><th>Trend</th></tr></thead>';
+            html += '<tbody>';
+            forecastAnalysis.topCustomers.slice(0, 10).forEach(item => {
+                const trendClass = item.trend > 0 ? 'trend-up' : (item.trend < 0 ? 'trend-down' : 'trend-neutral');
+                html += `<tr>
+                    <td>${item.name}</td>
+                    <td>${item.currentAvg.toFixed(0)}</td>
+                    <td>${item.forecastAvg.toFixed(0)}</td>
+                    <td><span class="${trendClass}">${item.trend > 0 ? '+' : ''}${item.trend.toFixed(1)}%</span></td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+
+            container.innerHTML = html;
+
+            // Render charts
+            renderVolumeTrendChart(trendAnalysis.overall);
+            renderForecastChart(forecastAnalysis.overall);
+        }
+
+        function performTrendAnalysis() {
+            // Group data by month
+            const monthlyData = {};
+            processedData.forEach(row => {
+                if (!monthlyData[row.month]) {
+                    monthlyData[row.month] = {
+                        total: 0,
+                        partners: {},
+                        customers: {},
+                        routes: {}
+                    };
+                }
+                monthlyData[row.month].total++;
+
+                // Track partners
+                monthlyData[row.month].partners[row.partnerName] =
+                    (monthlyData[row.month].partners[row.partnerName] || 0) + 1;
+
+                // Track customers
+                monthlyData[row.month].customers[row.customerName] =
+                    (monthlyData[row.month].customers[row.customerName] || 0) + 1;
+
+                // Track routes
+                const route = `${row.senderCountry} → ${row.receiverCountry}`;
+                monthlyData[row.month].routes[route] =
+                    (monthlyData[row.month].routes[route] || 0) + 1;
+            });
+
+            const sortedMonths = Object.keys(monthlyData).sort();
+
+            // Calculate overall trend
+            const overallTrend = sortedMonths.map(month => ({
+                month,
+                value: monthlyData[month].total
+            }));
+
+            // Calculate partner trends
+            const partnerTrends = {};
+            const customerTrends = {};
+            const routeTrends = {};
+
+            // Get all partners, customers, routes
+            const allPartners = new Set();
+            const allCustomers = new Set();
+            const allRoutes = new Set();
+
+            Object.values(monthlyData).forEach(data => {
+                Object.keys(data.partners).forEach(p => allPartners.add(p));
+                Object.keys(data.customers).forEach(c => allCustomers.add(c));
+                Object.keys(data.routes).forEach(r => allRoutes.add(r));
+            });
+
+            // Calculate trends for partners
+            allPartners.forEach(partner => {
+                const values = sortedMonths.map(month =>
+                    monthlyData[month].partners[partner] || 0
+                );
+                const recentMonths = Math.min(analysisConfig.trendComparisonMonths, sortedMonths.length);
+                const recent = values.slice(-recentMonths);
+                const previous = values.slice(-recentMonths * 2, -recentMonths);
+
+                if (previous.length > 0 && recent.length > 0) {
+                    const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
+                    const previousAvg = previous.reduce((a, b) => a + b, 0) / previous.length;
+                    const change = previousAvg > 0 ? ((recentAvg - previousAvg) / previousAvg * 100) : 0;
+
+                    partnerTrends[partner] = {
+                        change,
+                        current: recentAvg,
+                        previous: previousAvg
+                    };
+                }
+            });
+
+            // Calculate trends for customers
+            allCustomers.forEach(customer => {
+                const values = sortedMonths.map(month =>
+                    monthlyData[month].customers[customer] || 0
+                );
+                const recentMonths = Math.min(analysisConfig.trendComparisonMonths, sortedMonths.length);
+                const recent = values.slice(-recentMonths);
+                const previous = values.slice(-recentMonths * 2, -recentMonths);
+
+                if (previous.length > 0 && recent.length > 0) {
+                    const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
+                    const previousAvg = previous.reduce((a, b) => a + b, 0) / previous.length;
+                    const change = previousAvg > 0 ? ((recentAvg - previousAvg) / previousAvg * 100) : 0;
+
+                    customerTrends[customer] = {
+                        change,
+                        current: recentAvg,
+                        previous: previousAvg
+                    };
+                }
+            });
+
+            // Calculate trends for routes
+            allRoutes.forEach(route => {
+                const values = sortedMonths.map(month =>
+                    monthlyData[month].routes[route] || 0
+                );
+                const recentMonths = Math.min(analysisConfig.trendComparisonMonths, sortedMonths.length);
+                const recent = values.slice(-recentMonths);
+                const previous = values.slice(-recentMonths * 2, -recentMonths);
+
+                if (previous.length > 0 && recent.length > 0) {
+                    const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
+                    const previousAvg = previous.reduce((a, b) => a + b, 0) / previous.length;
+                    const change = previousAvg > 0 ? ((recentAvg - previousAvg) / previousAvg * 100) : 0;
+
+                    routeTrends[route] = {
+                        change,
+                        current: recentAvg,
+                        previous: previousAvg
+                    };
+                }
+            });
+
+            // Filter and sort partners using configured threshold
+            const growingPartners = Object.entries(partnerTrends)
+                .filter(([name, data]) => data.change >= analysisConfig.trendThresholdPercent)
+                .map(([name, data]) => ({ name, ...data }))
+                .sort((a, b) => b.change - a.change);
+
+            const decliningPartners = Object.entries(partnerTrends)
+                .filter(([name, data]) => data.change <= -analysisConfig.trendThresholdPercent)
+                .map(([name, data]) => ({ name, ...data }))
+                .sort((a, b) => a.change - b.change);
+
+            // Sort all customers
+            const allCustomerTrends = Object.entries(customerTrends)
+                .map(([name, data]) => ({ name, ...data }))
+                .sort((a, b) => b.current - a.current);
+
+            // Sort top routes
+            const allRouteTrends = Object.entries(routeTrends)
+                .map(([name, data]) => ({ name, ...data }))
+                .sort((a, b) => b.current - a.current);
+
+            return {
+                overall: overallTrend,
+                partners: {
+                    growing: growingPartners,
+                    declining: decliningPartners,
+                    all: Object.entries(partnerTrends).map(([name, data]) => ({ name, ...data }))
+                },
+                customers: {
+                    all: allCustomerTrends
+                },
+                routes: allRouteTrends
+            };
+        }
+
+        function performAnomalyDetection() {
+            // Monthly volume anomalies
+            const monthlyData = {};
+            processedData.forEach(row => {
+                monthlyData[row.month] = (monthlyData[row.month] || 0) + 1;
+            });
+
+            const volumes = Object.values(monthlyData);
+            const mean = volumes.reduce((a, b) => a + b, 0) / volumes.length;
+            const stdDev = Math.sqrt(
+                volumes.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / volumes.length
+            );
+
+            const monthlyAnomalies = [];
+            Object.entries(monthlyData).forEach(([month, value]) => {
+                const deviation = Math.abs(value - mean) / stdDev;
+                if (deviation > analysisConfig.anomalyDetectionSigma) {
+                    monthlyAnomalies.push({
+                        month,
+                        value,
+                        deviation,
+                        expectedMin: mean - analysisConfig.anomalyDetectionSigma * stdDev,
+                        expectedMax: mean + analysisConfig.anomalyDetectionSigma * stdDev
+                    });
+                }
+            });
+
+            // Partner anomalies
+            const partnerMonthlyData = {};
+            processedData.forEach(row => {
+                if (!partnerMonthlyData[row.partnerName]) {
+                    partnerMonthlyData[row.partnerName] = {};
+                }
+                partnerMonthlyData[row.partnerName][row.month] =
+                    (partnerMonthlyData[row.partnerName][row.month] || 0) + 1;
+            });
+
+            const partnerAnomalies = [];
+            Object.entries(partnerMonthlyData).forEach(([partner, monthData]) => {
+                const values = Object.values(monthData);
+                if (values.length < 3) return; // Skip if not enough data
+
+                const partnerMean = values.reduce((a, b) => a + b, 0) / values.length;
+                const partnerStdDev = Math.sqrt(
+                    values.reduce((sq, n) => sq + Math.pow(n - partnerMean, 2), 0) / values.length
+                );
+
+                Object.entries(monthData).forEach(([month, value]) => {
+                    const deviation = Math.abs(value - partnerMean) / (partnerStdDev || 1);
+                    if (deviation > analysisConfig.anomalyDetectionSigma && partnerStdDev > 0) {
+                        partnerAnomalies.push({
+                            partner,
+                            month,
+                            value,
+                            deviation,
+                            expectedMin: partnerMean - analysisConfig.anomalyDetectionSigma * partnerStdDev,
+                            expectedMax: partnerMean + analysisConfig.anomalyDetectionSigma * partnerStdDev
+                        });
+                    }
+                });
+            });
+
+            return {
+                monthlyAnomalies: monthlyAnomalies.sort((a, b) => b.deviation - a.deviation),
+                partnerAnomalies: partnerAnomalies.sort((a, b) => b.deviation - a.deviation),
+                totalAnomalies: monthlyAnomalies.length + partnerAnomalies.length
+            };
+        }
+
+        function performForecasting() {
+            // Get monthly data
+            const monthlyData = {};
+            processedData.forEach(row => {
+                if (!monthlyData[row.month]) {
+                    monthlyData[row.month] = {
+                        total: 0,
+                        partners: {},
+                        customers: {}
+                    };
+                }
+                monthlyData[row.month].total++;
+                monthlyData[row.month].partners[row.partnerName] =
+                    (monthlyData[row.month].partners[row.partnerName] || 0) + 1;
+                monthlyData[row.month].customers[row.customerName] =
+                    (monthlyData[row.month].customers[row.customerName] || 0) + 1;
+            });
+
+            const sortedMonths = Object.keys(monthlyData).sort();
+
+            // Linear regression for overall volume
+            const volumes = sortedMonths.map(m => monthlyData[m].total);
+            const forecast = linearRegression(volumes, analysisConfig.forecastHorizonMonths);
+
+            // Calculate overall trend
+            const currentAvg = volumes.slice(-analysisConfig.trendComparisonMonths).reduce((a, b) => a + b, 0) / analysisConfig.trendComparisonMonths;
+            const forecastAvg = forecast.predictions.reduce((a, b) => a + b, 0) / analysisConfig.forecastHorizonMonths;
+            const overallTrend = ((forecastAvg - currentAvg) / currentAvg) * 100;
+
+            // Forecast for top partners
+            const allPartners = new Set();
+            Object.values(monthlyData).forEach(data => {
+                Object.keys(data.partners).forEach(p => allPartners.add(p));
+            });
+
+            const partnerForecasts = [];
+            allPartners.forEach(partner => {
+                const values = sortedMonths.map(month =>
+                    monthlyData[month].partners[partner] || 0
+                );
+                if (values.length >= analysisConfig.trendComparisonMonths) {
+                    const partnerForecast = linearRegression(values, analysisConfig.forecastHorizonMonths);
+                    const partnerCurrentAvg = values.slice(-analysisConfig.trendComparisonMonths).reduce((a, b) => a + b, 0) / analysisConfig.trendComparisonMonths;
+                    const partnerForecastAvg = partnerForecast.predictions.reduce((a, b) => a + b, 0) / analysisConfig.forecastHorizonMonths;
+                    const trend = partnerCurrentAvg > 0 ?
+                        ((partnerForecastAvg - partnerCurrentAvg) / partnerCurrentAvg) * 100 : 0;
+
+                    partnerForecasts.push({
+                        name: partner,
+                        currentAvg: partnerCurrentAvg,
+                        forecastAvg: partnerForecastAvg,
+                        trend
+                    });
+                }
+            });
+
+            // Forecast for top customers
+            const allCustomers = new Set();
+            Object.values(monthlyData).forEach(data => {
+                Object.keys(data.customers).forEach(c => allCustomers.add(c));
+            });
+
+            const customerForecasts = [];
+            allCustomers.forEach(customer => {
+                const values = sortedMonths.map(month =>
+                    monthlyData[month].customers[customer] || 0
+                );
+                if (values.length >= analysisConfig.trendComparisonMonths) {
+                    const customerForecast = linearRegression(values, analysisConfig.forecastHorizonMonths);
+                    const customerCurrentAvg = values.slice(-analysisConfig.trendComparisonMonths).reduce((a, b) => a + b, 0) / analysisConfig.trendComparisonMonths;
+                    const customerForecastAvg = customerForecast.predictions.reduce((a, b) => a + b, 0) / analysisConfig.forecastHorizonMonths;
+                    const trend = customerCurrentAvg > 0 ?
+                        ((customerForecastAvg - customerCurrentAvg) / customerCurrentAvg) * 100 : 0;
+
+                    customerForecasts.push({
+                        name: customer,
+                        currentAvg: customerCurrentAvg,
+                        forecastAvg: customerForecastAvg,
+                        trend
+                    });
+                }
+            });
+
+            // Generate future month labels
+            const lastMonth = sortedMonths[sortedMonths.length - 1];
+            const [year, month] = lastMonth.split('-').map(Number);
+            const futureMonths = [];
+            for (let i = 1; i <= analysisConfig.forecastHorizonMonths; i++) {
+                const newDate = new Date(year, month - 1 + i, 1);
+                futureMonths.push(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`);
+            }
+
+            return {
+                overall: {
+                    historical: sortedMonths.map((m, i) => ({ month: m, value: volumes[i] })),
+                    forecast: futureMonths.map((m, i) => ({ month: m, value: forecast.predictions[i] }))
+                },
+                overallTrend,
+                topPartners: partnerForecasts.sort((a, b) => b.currentAvg - a.currentAvg),
+                topCustomers: customerForecasts.sort((a, b) => b.currentAvg - a.currentAvg)
+            };
+        }
+
+        function linearRegression(values, periods) {
+            const n = values.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+
+            for (let i = 0; i < n; i++) {
+                sumX += i;
+                sumY += values[i];
+                sumXY += i * values[i];
+                sumXX += i * i;
+            }
+
+            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+
+            const predictions = [];
+            for (let i = n; i < n + periods; i++) {
+                predictions.push(Math.max(0, slope * i + intercept));
+            }
+
+            return { slope, intercept, predictions };
+        }
+
+        function generateAnalysisInsights(trendAnalysis, anomalyAnalysis, forecastAnalysis) {
+            const insights = [];
+
+            // Trend insights
+            if (trendAnalysis.partners.growing.length > 0) {
+                const top = trendAnalysis.partners.growing[0];
+                insights.push({
+                    type: 'positive',
+                    message: `${top.name} shows strongest growth at +${top.change.toFixed(1)}% with ${top.current.toFixed(0)} invoices/month average.`
+                });
+            }
+
+            if (trendAnalysis.partners.declining.length > 0) {
+                const top = trendAnalysis.partners.declining[0];
+                insights.push({
+                    type: 'negative',
+                    message: `${top.name} shows steepest decline at ${top.change.toFixed(1)}% - investigate potential service issues.`
+                });
+            }
+
+            // Anomaly insights
+            if (anomalyAnalysis.monthlyAnomalies.length > 0) {
+                const topAnomaly = anomalyAnalysis.monthlyAnomalies[0];
+                const direction = topAnomaly.value > (topAnomaly.expectedMax + topAnomaly.expectedMin) / 2 ? 'spike' : 'drop';
+                insights.push({
+                    type: 'neutral',
+                    message: `${topAnomaly.month} shows significant volume ${direction} (${topAnomaly.deviation.toFixed(1)}σ deviation) - ${topAnomaly.value.toLocaleString()} invoices.`
+                });
+            }
+
+            // Forecast insights
+            if (forecastAnalysis.overallTrend > 5) {
+                insights.push({
+                    type: 'positive',
+                    message: `Overall volume forecast shows ${forecastAnalysis.overallTrend.toFixed(1)}% growth over next 3 months - prepare for increased capacity.`
+                });
+            } else if (forecastAnalysis.overallTrend < -5) {
+                insights.push({
+                    type: 'negative',
+                    message: `Overall volume forecast shows ${Math.abs(forecastAnalysis.overallTrend).toFixed(1)}% decline over next 3 months - review customer engagement.`
+                });
+            } else {
+                insights.push({
+                    type: 'neutral',
+                    message: `Overall volume forecast is stable (${forecastAnalysis.overallTrend > 0 ? '+' : ''}${forecastAnalysis.overallTrend.toFixed(1)}%) - consistent demand expected.`
+                });
+            }
+
+            return insights;
+        }
+
+        function renderVolumeTrendChart(overallTrend) {
+            const ctx = document.getElementById('volumeTrendChart');
+            if (!ctx) return;
+
+            const months = overallTrend.map(d => d.month);
+            const values = overallTrend.map(d => d.value);
+
+            // Calculate month-over-month changes
+            const changes = [];
+            for (let i = 1; i < values.length; i++) {
+                const change = ((values[i] - values[i-1]) / values[i-1]) * 100;
+                changes.push(change);
+            }
+
+            if (charts.volumeTrend) charts.volumeTrend.destroy();
+
+            charts.volumeTrend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Invoice Volume',
+                        data: values,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        yAxisID: 'y'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Volume: ${context.parsed.y.toLocaleString()} invoices`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Invoice Volume'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderForecastChart(forecastData) {
+            const ctx = document.getElementById('forecastChart');
+            if (!ctx) return;
+
+            const allMonths = [
+                ...forecastData.historical.map(d => d.month),
+                ...forecastData.forecast.map(d => d.month)
+            ];
+
+            const historicalValues = forecastData.historical.map(d => d.value);
+            const forecastValues = new Array(forecastData.historical.length).fill(null)
+                .concat(forecastData.forecast.map(d => d.value));
+
+            // Add bridge point
+            forecastValues[forecastData.historical.length] = historicalValues[historicalValues.length - 1];
+
+            if (charts.forecast) charts.forecast.destroy();
+
+            charts.forecast = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: allMonths,
+                    datasets: [{
+                        label: 'Historical',
+                        data: historicalValues.concat(new Array(forecastData.forecast.length).fill(null)),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }, {
+                        label: 'Forecast',
+                        data: forecastValues,
+                        borderColor: '#27ae60',
+                        backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                        borderDash: [5, 5],
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y ? context.parsed.y.toLocaleString() : 'N/A'} invoices`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Invoice Volume'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderFileSizeAnalysis() {
+            const container = document.getElementById('fileSizeContent');
+
+            // Find all columns containing "File size" (case-insensitive)
+            const fileSizeColumns = [];
+            if (transactionData && transactionData.length > 0) {
+                const sampleRow = transactionData[0];
+                Object.keys(sampleRow).forEach(key => {
+                    if (key.toLowerCase().includes('file size')) {
+                        fileSizeColumns.push(key);
+                    }
+                });
+            }
+
+            if (fileSizeColumns.length === 0) {
+                container.innerHTML = '<h3 class="mb-4">File Size Analysis</h3><p class="text-muted">No columns containing "File size" found in the data.</p>';
+                return;
+            }
+
+            // Store columns globally for filtering
+            window.fileSizeColumns = fileSizeColumns;
+
+            let html = '<h3 class="mb-4">File Size Analysis</h3>';
+            html += `<p class="text-muted mb-4">Analyzing ${fileSizeColumns.length} file size column(s): ${fileSizeColumns.join(', ')}</p>`;
+
+            // Filter Section
+            html += '<div class="filter-section mb-4">';
+            html += '<h5 class="mb-3">Filters</h5>';
+            html += '<div class="row g-3">';
+
+            // File Size Column Selection (if multiple)
+            if (fileSizeColumns.length > 1) {
+                html += '<div class="col-md-3">';
+                html += '<label class="form-label fw-bold">File Size Column</label>';
+                html += '<select id="fileSizeColumnFilter" class="form-select">';
+                fileSizeColumns.forEach((col, idx) => {
+                    html += `<option value="${idx}">${col}</option>`;
+                });
+                html += '</select>';
+                html += '</div>';
+            }
+
+            // Customer Entity Filter
+            html += '<div class="col-md-3">';
+            html += '<label class="form-label fw-bold">Customer Entity</label>';
+            html += '<select id="fileSizeCustomerFilter" class="form-select" multiple size="1">';
+            html += '<option value="all" selected>All Customers</option>';
+            const uniqueCustomers = [...new Set(processedData.map(d => d.customerName))].filter(c => c !== 'Unknown Customer').sort();
+            uniqueCustomers.forEach(customer => {
+                html += `<option value="${customer}">${customer}</option>`;
+            });
+            html += '</select>';
+            html += '<small class="text-muted">Hold Ctrl/Cmd to select multiple</small>';
+            html += '</div>';
+
+            // Partner Filter
+            html += '<div class="col-md-3">';
+            html += '<label class="form-label fw-bold">Trading Partner</label>';
+            html += '<select id="fileSizePartnerFilter" class="form-select" multiple size="1">';
+            html += '<option value="all" selected>All Partners</option>';
+            const uniquePartners = [...new Set(processedData.map(d => d.partnerName))].filter(p => p !== 'Unknown Partner').sort();
+            uniquePartners.forEach(partner => {
+                html += `<option value="${partner}">${partner}</option>`;
+            });
+            html += '</select>';
+            html += '<small class="text-muted">Hold Ctrl/Cmd to select multiple</small>';
+            html += '</div>';
+
+            // File Size Range
+            html += '<div class="col-md-3">';
+            html += '<label class="form-label fw-bold">File Size Range (KB)</label>';
+            html += '<div class="input-group input-group-sm mb-1">';
+            html += '<span class="input-group-text">Min</span>';
+            html += '<input type="number" id="fileSizeMin" class="form-control" placeholder="0" min="0">';
+            html += '</div>';
+            html += '<div class="input-group input-group-sm">';
+            html += '<span class="input-group-text">Max</span>';
+            html += '<input type="number" id="fileSizeMax" class="form-control" placeholder="∞" min="0">';
+            html += '</div>';
+            html += '</div>';
+
+            html += '</div>'; // end row
+
+            // Date Range
+            html += '<div class="row g-3 mt-2">';
+            html += '<div class="col-md-3">';
+            html += '<label class="form-label fw-bold">Start Date</label>';
+            html += '<input type="date" id="fileSizeDateStart" class="form-control">';
+            html += '</div>';
+            html += '<div class="col-md-3">';
+            html += '<label class="form-label fw-bold">End Date</label>';
+            html += '<input type="date" id="fileSizeDateEnd" class="form-control">';
+            html += '</div>';
+            html += '<div class="col-md-6 d-flex align-items-end">';
+            html += '<button id="applyFileSizeFilters" class="btn btn-primary me-2">Apply Filters</button>';
+            html += '<button id="clearFileSizeFilters" class="btn btn-secondary">Clear Filters</button>';
+            html += '</div>';
+            html += '</div>'; // end row
+            html += '</div>'; // end filter-section
+
+            // Content container that will be updated by filters
+            html += '<div id="fileSizeAnalysisResults"></div>';
+
+            container.innerHTML = html;
+
+            // Add event listeners
+            document.getElementById('applyFileSizeFilters').addEventListener('click', applyFileSizeFilters);
+            document.getElementById('clearFileSizeFilters').addEventListener('click', clearFileSizeFilters);
+
+            // Initial render with no filters
+            renderFileSizeResults();
+        }
+
+        function applyFileSizeFilters() {
+            renderFileSizeResults();
+        }
+
+        function clearFileSizeFilters() {
+            // Reset all filters
+            const customerFilter = document.getElementById('fileSizeCustomerFilter');
+            const partnerFilter = document.getElementById('fileSizePartnerFilter');
+            if (customerFilter) {
+                Array.from(customerFilter.options).forEach(opt => {
+                    opt.selected = opt.value === 'all';
+                });
+            }
+            if (partnerFilter) {
+                Array.from(partnerFilter.options).forEach(opt => {
+                    opt.selected = opt.value === 'all';
+                });
+            }
+            document.getElementById('fileSizeMin').value = '';
+            document.getElementById('fileSizeMax').value = '';
+            document.getElementById('fileSizeDateStart').value = '';
+            document.getElementById('fileSizeDateEnd').value = '';
+
+            // Re-render
+            renderFileSizeResults();
+        }
+
+        function renderFileSizeResults() {
+            const resultsContainer = document.getElementById('fileSizeAnalysisResults');
+            if (!resultsContainer) return;
+
+            // Get filter values
+            const columnIndex = document.getElementById('fileSizeColumnFilter') ?
+                parseInt(document.getElementById('fileSizeColumnFilter').value) : 0;
+            const columnName = window.fileSizeColumns[columnIndex];
+
+            const customerSelection = Array.from(document.getElementById('fileSizeCustomerFilter').selectedOptions).map(opt => opt.value);
+            const partnerSelection = Array.from(document.getElementById('fileSizePartnerFilter').selectedOptions).map(opt => opt.value);
+            const showAllCustomers = customerSelection.includes('all');
+            const showAllPartners = partnerSelection.includes('all');
+
+            const minSize = parseFloat(document.getElementById('fileSizeMin').value) || 0;
+            const maxSize = parseFloat(document.getElementById('fileSizeMax').value) || Infinity;
+            const dateStart = document.getElementById('fileSizeDateStart').value;
+            const dateEnd = document.getElementById('fileSizeDateEnd').value;
+
+            let startDate = dateStart ? new Date(dateStart) : null;
+            let endDate = dateEnd ? new Date(dateEnd) : null;
+
+            // Filter data
+            const filteredData = processedData.filter(row => {
+                // Customer filter
+                if (!showAllCustomers && !customerSelection.includes(row.customerName)) {
+                    return false;
+                }
+
+                // Partner filter
+                if (!showAllPartners && !partnerSelection.includes(row.partnerName)) {
+                    return false;
+                }
+
+                // File size filter
+                const size = parseFloat(row[columnName]) || 0;
+                if (size < minSize || size > maxSize) {
+                    return false;
+                }
+
+                // Date filter
+                if (row.invoiceDate) {
+                    if (startDate && row.invoiceDate < startDate) {
+                        return false;
+                    }
+                    if (endDate) {
+                        const endOfDay = new Date(endDate);
+                        endOfDay.setHours(23, 59, 59, 999);
+                        if (row.invoiceDate > endOfDay) {
+                            return false;
+                        }
+                    }
+                }
+
+                return true;
+            });
+
+            if (filteredData.length === 0) {
+                resultsContainer.innerHTML = '<div class="alert alert-info">No data matches the current filters. Please adjust your filter criteria.</div>';
+                return;
+            }
+
+            let html = '';
+            html += `<div class="alert alert-info">Showing ${filteredData.length.toLocaleString()} of ${processedData.length.toLocaleString()} transactions</div>`;
+
+            // Calculate statistics on filtered data
+            const values = filteredData.map(row => parseFloat(row[columnName]) || 0).filter(v => v > 0);
+
+            const total = values.reduce((a, b) => a + b, 0);
+            const average = total / values.length;
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const sortedValues = [...values].sort((a, b) => a - b);
+            const median = sortedValues[Math.floor(sortedValues.length / 2)];
+
+            // Summary Statistics
+            html += `<h4 class="mt-4 mb-3">${columnName}</h4>`;
+            html += '<div class="row mb-4">';
+            html += `<div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-label">Total Size</div>
+                    <div class="stat-value">${total.toLocaleString(undefined, {maximumFractionDigits: 2})} KB</div>
+                    <small>${(total / 1024).toLocaleString(undefined, {maximumFractionDigits: 2})} MB</small>
+                </div>
+            </div>`;
+            html += `<div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-label">Average Size</div>
+                    <div class="stat-value">${average.toLocaleString(undefined, {maximumFractionDigits: 2})} KB</div>
+                </div>
+            </div>`;
+            html += `<div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-label">Median Size</div>
+                    <div class="stat-value">${median.toLocaleString(undefined, {maximumFractionDigits: 2})} KB</div>
+                </div>
+            </div>`;
+            html += `<div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-label">Range</div>
+                    <div class="stat-value">${min.toLocaleString(undefined, {maximumFractionDigits: 2})} - ${max.toLocaleString(undefined, {maximumFractionDigits: 2})} KB</div>
+                </div>
+            </div>`;
+            html += '</div>';
+
+            // File size by customer
+            html += '<h5 class="mt-4 mb-3">File Size by Customer Entity</h5>';
+            const customerSizes = {};
+            filteredData.forEach(row => {
+                const size = parseFloat(row[columnName]) || 0;
+                if (size > 0) {
+                    customerSizes[row.customerName] = (customerSizes[row.customerName] || 0) + size;
+                }
+            });
+
+            html += '<div class="table-container">';
+            html += '<table class="table table-hover">';
+            html += '<thead><tr><th>Customer</th><th>Total Size (KB)</th><th>Total Size (MB)</th><th>Invoice Count</th><th>Avg Size (KB)</th></tr></thead>';
+            html += '<tbody>';
+            Object.entries(customerSizes)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([customer, size]) => {
+                    const count = filteredData.filter(r => r.customerName === customer && parseFloat(r[columnName]) > 0).length;
+                    const avgSize = size / count;
+                    html += `<tr>
+                        <td><strong>${customer}</strong></td>
+                        <td>${size.toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
+                        <td>${(size / 1024).toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
+                        <td>${count.toLocaleString()}</td>
+                        <td>${avgSize.toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
+                    </tr>`;
+                });
+            html += '</tbody></table></div>';
+
+            // Chart: File size by customer
+            html += '<div class="chart-container"><canvas id="fileSizeByCustomerChartFiltered"></canvas></div>';
+
+            // File size by partner
+            html += '<h5 class="mt-4 mb-3">File Size by Trading Partner (Top 15)</h5>';
+            const partnerSizes = {};
+            filteredData.forEach(row => {
+                const size = parseFloat(row[columnName]) || 0;
+                if (size > 0) {
+                    partnerSizes[row.partnerName] = (partnerSizes[row.partnerName] || 0) + size;
+                }
+            });
+
+            html += '<div class="table-container">';
+            html += '<table class="table table-hover">';
+            html += '<thead><tr><th>Partner</th><th>Total Size (KB)</th><th>Total Size (MB)</th><th>Invoice Count</th><th>Avg Size (KB)</th></tr></thead>';
+            html += '<tbody>';
+            Object.entries(partnerSizes)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 15)
+                .forEach(([partner, size]) => {
+                    const count = filteredData.filter(r => r.partnerName === partner && parseFloat(r[columnName]) > 0).length;
+                    const avgSize = size / count;
+                    html += `<tr>
+                        <td><strong>${partner}</strong></td>
+                        <td>${size.toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
+                        <td>${(size / 1024).toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
+                        <td>${count.toLocaleString()}</td>
+                        <td>${avgSize.toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
+                    </tr>`;
+                });
+            html += '</tbody></table></div>';
+
+            // Chart: File size by partner
+            html += '<div class="chart-container"><canvas id="fileSizeByPartnerChartFiltered"></canvas></div>';
+
+            // Monthly trend
+            html += '<h5 class="mt-4 mb-3">File Size Trend Over Time</h5>';
+            const monthlyFileSizes = {};
+            filteredData.forEach(row => {
+                const size = parseFloat(row[columnName]) || 0;
+                if (size > 0 && row.month !== 'Unknown') {
+                    monthlyFileSizes[row.month] = (monthlyFileSizes[row.month] || 0) + size;
+                }
+            });
+
+            html += '<div class="chart-container"><canvas id="fileSizeMonthlyChartFiltered"></canvas></div>';
+
+            // Top 20 largest transactions
+            html += '<h5 class="mt-4 mb-3">Top 20 Largest Transactions</h5>';
+            const sortedTransactions = filteredData
+                .filter(row => parseFloat(row[columnName]) > 0)
+                .sort((a, b) => parseFloat(b[columnName]) - parseFloat(a[columnName]))
+                .slice(0, 20);
+
+            html += '<div class="table-container">';
+            html += '<table class="table table-sm table-hover">';
+            html += '<thead><tr><th>Customer</th><th>Partner</th><th>Month</th><th>Size (KB)</th><th>Size (MB)</th></tr></thead>';
+            html += '<tbody>';
+            sortedTransactions.forEach(row => {
+                const size = parseFloat(row[columnName]);
+                html += `<tr>
+                    <td>${row.customerName}</td>
+                    <td>${row.partnerName}</td>
+                    <td>${row.month}</td>
+                    <td>${size.toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
+                    <td>${(size / 1024).toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+
+            resultsContainer.innerHTML = html;
+
+            // Render charts with filtered data
+            renderFileSizeByCustomerChartFiltered(columnName, filteredData);
+            renderFileSizeByPartnerChartFiltered(columnName, filteredData);
+            renderFileSizeMonthlyChartFiltered(columnName, filteredData);
+        }
+
+        function renderFileSizeByCustomerChartFiltered(columnName, data) {
+            const ctx = document.getElementById('fileSizeByCustomerChartFiltered');
+            if (!ctx) return;
+
+            const customerSizes = {};
+            data.forEach(row => {
+                const size = parseFloat(row[columnName]) || 0;
+                if (size > 0) {
+                    customerSizes[row.customerName] = (customerSizes[row.customerName] || 0) + size;
+                }
+            });
+
+            const sorted = Object.entries(customerSizes).sort((a, b) => b[1] - a[1]);
+            const labels = sorted.map(e => e[0]);
+            const chartData = sorted.map(e => e[1] / 1024); // Convert to MB
+
+            if (charts.fileSizeByCustomerFiltered) charts.fileSizeByCustomerFiltered.destroy();
+
+            charts.fileSizeByCustomerFiltered = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total File Size (MB)',
+                        data: chartData,
+                        backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                        borderColor: '#667eea',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.parsed.x.toLocaleString(undefined, {maximumFractionDigits: 2})} MB (${(context.parsed.x * 1024).toLocaleString(undefined, {maximumFractionDigits: 2})} KB)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Total File Size (MB)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderFileSizeByPartnerChartFiltered(columnName, data) {
+            const ctx = document.getElementById('fileSizeByPartnerChartFiltered');
+            if (!ctx) return;
+
+            const partnerSizes = {};
+            data.forEach(row => {
+                const size = parseFloat(row[columnName]) || 0;
+                if (size > 0) {
+                    partnerSizes[row.partnerName] = (partnerSizes[row.partnerName] || 0) + size;
+                }
+            });
+
+            const sorted = Object.entries(partnerSizes).sort((a, b) => b[1] - a[1]).slice(0, 15);
+            const labels = sorted.map(e => e[0]);
+            const chartData = sorted.map(e => e[1] / 1024); // Convert to MB
+
+            if (charts.fileSizeByPartnerFiltered) charts.fileSizeByPartnerFiltered.destroy();
+
+            charts.fileSizeByPartnerFiltered = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total File Size (MB)',
+                        data: chartData,
+                        backgroundColor: 'rgba(118, 75, 162, 0.7)',
+                        borderColor: '#764ba2',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.parsed.x.toLocaleString(undefined, {maximumFractionDigits: 2})} MB (${(context.parsed.x * 1024).toLocaleString(undefined, {maximumFractionDigits: 2})} KB)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Total File Size (MB)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderFileSizeMonthlyChartFiltered(columnName, data) {
+            const ctx = document.getElementById('fileSizeMonthlyChartFiltered');
+            if (!ctx) return;
+
+            const monthlyFileSizes = {};
+            data.forEach(row => {
+                const size = parseFloat(row[columnName]) || 0;
+                if (size > 0 && row.month !== 'Unknown') {
+                    monthlyFileSizes[row.month] = (monthlyFileSizes[row.month] || 0) + size;
+                }
+            });
+
+            const sortedMonths = Object.keys(monthlyFileSizes).sort();
+            const labels = sortedMonths;
+            const chartData = sortedMonths.map(month => monthlyFileSizes[month] / 1024); // Convert to MB
+
+            if (charts.fileSizeMonthlyFiltered) charts.fileSizeMonthlyFiltered.destroy();
+
+            charts.fileSizeMonthlyFiltered = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total File Size (MB)',
+                        data: chartData,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.parsed.y.toLocaleString(undefined, {maximumFractionDigits: 2})} MB (${(context.parsed.y * 1024).toLocaleString(undefined, {maximumFractionDigits: 2})} KB)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Total File Size (MB)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString(undefined, {maximumFractionDigits: 2}) + ' MB';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderCountriesAnalysis() {
+            const container = document.getElementById('countriesAnalysis');
+
+            // Store full country data globally for filtering
+            window.countryAnalysisData = buildCountryAnalysisData();
+
+            let html = '<h3 class="mb-4">Geographic Analysis</h3>';
+
+            // Filter section
+            html += '<div class="filter-section mb-4">';
+            html += '<label class="form-label fw-bold">Filter by Customer Entity:</label>';
+            html += '<select id="countryCustomerFilter" class="form-select" onchange="updateCountryAnalysis()">';
+            html += '<option value="all">All Customer Entities</option>';
+            const uniqueCustomers = [...new Set(processedData.map(d => d.customerName))].filter(c => c !== 'Unknown Customer').sort();
+            uniqueCustomers.forEach(customer => {
+                html += `<option value="${customer}">${customer}</option>`;
+            });
+            html += '</select>';
+            html += '<small class="text-muted mt-1 d-block">Select a customer entity to see only their geographic routes</small>';
+            html += '</div>';
+
+            // Summary statistics
+            html += '<div class="row mb-4" id="countrySummaryCards">';
+            html += '</div>';
+
+            // Top routes chart
+            html += '<h4 class="mt-4 mb-3">Top Invoice Routes</h4>';
+            html += '<div class="chart-container"><canvas id="routesChart"></canvas></div>';
+
+            // Routes table with monthly breakdown
+            html += '<h4 class="mt-5 mb-3">Detailed Route Analysis</h4>';
+            html += '<div id="countryRoutesTable"></div>';
+
+            // Sender countries breakdown
+            html += '<div class="row mt-5">';
+            html += '<div class="col-md-6">';
+            html += '<h4 class="mb-3">Sender Countries</h4>';
+            html += '<div class="chart-container" style="height: 300px;"><canvas id="senderChart"></canvas></div>';
+            html += '</div>';
+
+            html += '<div class="col-md-6">';
+            html += '<h4 class="mb-3">Receiver Countries</h4>';
+            html += '<div class="chart-container" style="height: 300px;"><canvas id="receiverChart"></canvas></div>';
+            html += '</div>';
+            html += '</div>';
+
+            container.innerHTML = html;
+
+            // Initial render with all data
+            updateCountryAnalysis();
+        }
+
+        function buildCountryAnalysisData() {
+            // Build country analysis data with customer entity breakdown
+            const data = {
+                all: {
+                    routes: {},
+                    senderCountries: {},
+                    receiverCountries: {}
+                },
+                byCustomer: {}
+            };
+
+            // Process all data
+            processedData.forEach(row => {
+                const route = `${row.senderCountry} → ${row.receiverCountry}`;
+                const customer = row.customerName;
+
+                // Aggregate for all customers
+                if (!data.all.routes[route]) {
+                    data.all.routes[route] = {
+                        count: 0,
+                        monthly: {},
+                        customers: new Set()
+                    };
+                }
+                data.all.routes[route].count++;
+                data.all.routes[route].monthly[row.month] = (data.all.routes[route].monthly[row.month] || 0) + 1;
+                data.all.routes[route].customers.add(customer);
+
+                data.all.senderCountries[row.senderCountry] = (data.all.senderCountries[row.senderCountry] || 0) + 1;
+                data.all.receiverCountries[row.receiverCountry] = (data.all.receiverCountries[row.receiverCountry] || 0) + 1;
+
+                // By customer
+                if (!data.byCustomer[customer]) {
+                    data.byCustomer[customer] = {
+                        routes: {},
+                        senderCountries: {},
+                        receiverCountries: {}
+                    };
+                }
+
+                if (!data.byCustomer[customer].routes[route]) {
+                    data.byCustomer[customer].routes[route] = {
+                        count: 0,
+                        monthly: {}
+                    };
+                }
+                data.byCustomer[customer].routes[route].count++;
+                data.byCustomer[customer].routes[route].monthly[row.month] =
+                    (data.byCustomer[customer].routes[route].monthly[row.month] || 0) + 1;
+
+                data.byCustomer[customer].senderCountries[row.senderCountry] =
+                    (data.byCustomer[customer].senderCountries[row.senderCountry] || 0) + 1;
+                data.byCustomer[customer].receiverCountries[row.receiverCountry] =
+                    (data.byCustomer[customer].receiverCountries[row.receiverCountry] || 0) + 1;
+            });
+
+            return data;
+        }
+
+        function updateCountryAnalysis() {
+            const selectedCustomer = document.getElementById('countryCustomerFilter').value;
+            const isAll = selectedCustomer === 'all';
+
+            // Get the appropriate data
+            const countryRoutes = isAll ?
+                window.countryAnalysisData.all.routes :
+                window.countryAnalysisData.byCustomer[selectedCustomer].routes;
+            const senderCountries = isAll ?
+                window.countryAnalysisData.all.senderCountries :
+                window.countryAnalysisData.byCustomer[selectedCustomer].senderCountries;
+            const receiverCountries = isAll ?
+                window.countryAnalysisData.all.receiverCountries :
+                window.countryAnalysisData.byCustomer[selectedCustomer].receiverCountries;
+
+            // Calculate total invoices for this selection
+            const totalInvoices = Object.values(countryRoutes).reduce((sum, route) => sum + route.count, 0);
+
+            // Update summary cards
+            let summaryHtml = '';
+            summaryHtml += `<div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-label">Sender Countries</div>
+                    <div class="stat-value">${Object.keys(senderCountries).length}</div>
+                </div>
+            </div>`;
+            summaryHtml += `<div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-label">Receiver Countries</div>
+                    <div class="stat-value">${Object.keys(receiverCountries).length}</div>
+                </div>
+            </div>`;
+            summaryHtml += `<div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-label">Total Routes</div>
+                    <div class="stat-value">${Object.keys(countryRoutes).length}</div>
+                </div>
+            </div>`;
+            document.getElementById('countrySummaryCards').innerHTML = summaryHtml;
+
+            // Update routes table
+            let tableHtml = '<div class="table-container">';
+            tableHtml += '<table class="table table-hover">';
+            tableHtml += '<thead><tr><th>Route</th><th>Total Invoices</th><th>Percentage</th><th>Monthly Average</th></tr></thead>';
+            tableHtml += '<tbody>';
+
+            const sortedRoutes = Object.entries(countryRoutes).sort((a, b) => b[1].count - a[1].count);
+            sortedRoutes.forEach(([route, data]) => {
+                const percentage = (data.count / totalInvoices * 100).toFixed(1);
+                const monthCount = Object.keys(data.monthly).length;
+                const monthlyAvg = (data.count / monthCount).toFixed(1);
+
+                tableHtml += `<tr>
+                    <td><strong>${route}</strong></td>
+                    <td>${data.count.toLocaleString()}</td>
+                    <td>
+                        <div class="progress-custom">
+                            <div class="progress-bar-custom" style="width: ${percentage}%">${percentage}%</div>
+                        </div>
+                    </td>
+                    <td>${monthlyAvg}</td>
+                </tr>`;
+            });
+
+            tableHtml += '</tbody></table></div>';
+            document.getElementById('countryRoutesTable').innerHTML = tableHtml;
+
+            // Update charts
+            renderRoutesChart(countryRoutes);
+            renderCountryChart('senderChart', senderCountries, 'Sender');
+            renderCountryChart('receiverChart', receiverCountries, 'Receiver');
+        }
+
+        function renderRoutesChart(countryRoutes) {
+            const ctx = document.getElementById('routesChart');
+            if (!ctx) return;
+
+            const sortedRoutes = Object.entries(countryRoutes)
+                .sort((a, b) => b[1].count - a[1].count)
+                .slice(0, 10);
+
+            const labels = sortedRoutes.map(r => r[0]);
+            const data = sortedRoutes.map(r => r[1].count);
+
+            // Destroy existing chart if it exists
+            if (charts.routes) charts.routes.destroy();
+
+            charts.routes = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Invoices',
+                        data: data,
+                        backgroundColor: 'rgba(118, 75, 162, 0.7)',
+                        borderColor: '#764ba2',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderCountryChart(canvasId, countryData, label) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
+
+            const sortedCountries = Object.entries(countryData)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+
+            const labels = sortedCountries.map(c => c[0]);
+            const data = sortedCountries.map(c => c[1]);
+
+            const colors = [
+                '#667eea', '#764ba2', '#f093fb', '#4facfe',
+                '#43e97b', '#fa709a', '#fee140', '#30cfd0',
+                '#a8edea', '#fed6e3'
+            ];
+
+            // Destroy existing chart if it exists
+            const chartKey = canvasId === 'senderChart' ? 'sender' : 'receiver';
+            if (charts[chartKey]) charts[chartKey].destroy();
+
+            charts[chartKey] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = (context.parsed / total * 100).toFixed(1);
+                                    return `${context.label}: ${context.parsed.toLocaleString()} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function saveReport() {
+            // Show loading message
+            const saveBtn = document.getElementById('saveBtn');
+            const originalButtonText = saveBtn.textContent;
+            saveBtn.textContent = 'Saving...';
+            saveBtn.disabled = true;
+
+            // Give the UI a moment to update
+            setTimeout(() => {
+                try {
+                    // Serialize all data needed to recreate the dashboard
+                    const savedData = {
+                        transactionData: transactionData,
+                        customerData: customerData,
+                        partnerData: partnerData,
+                        processedData: processedData,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    // Convert to JSON string and escape for HTML
+                    const jsonString = JSON.stringify(savedData);
+                    // HTML-encode the JSON to prevent any parsing issues
+                    const encodedJson = jsonString
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+
+                    // Clone the document to work with a clean copy
+                    const docClone = document.cloneNode(true);
+
+                    // Remove any existing embedded data script
+                    const existingDataScript = docClone.getElementById('embeddedData');
+                    if (existingDataScript) {
+                        existingDataScript.remove();
+                    }
+
+                    // Create the JSON data script element
+                    const jsonScript = docClone.createElement('script');
+                    jsonScript.type = 'application/json';
+                    jsonScript.id = 'embeddedData';
+                    jsonScript.textContent = encodedJson;
+
+                    // Create the loader script element
+                    const loaderScript = docClone.createElement('script');
+                    loaderScript.textContent = `
+(function() {
+  try {
+    var scriptTag = document.getElementById('embeddedData');
+    if (scriptTag) {
+      var encodedJson = scriptTag.textContent;
+      var decoded = encodedJson
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&');
+      window.EMBEDDED_REPORT_DATA = JSON.parse(decoded);
+
+      // Trigger the embedded data check after data is loaded
+      console.log('Embedded data loaded, triggering dashboard render');
+      if (typeof checkForEmbeddedData === 'function') {
+        checkForEmbeddedData();
+      }
+    }
+  } catch (e) {
+    console.error("Error loading embedded data:", e);
+  }
+})();
+`;
+
+                    // Append scripts to body
+                    docClone.body.appendChild(jsonScript);
+                    docClone.body.appendChild(loaderScript);
+
+                    // Get the HTML content from the clean clone
+                    const htmlContent = '<!DOCTYPE html>\n' + docClone.documentElement.outerHTML;
+
+                    // Create a blob with the HTML content
+                    const blob = new Blob([htmlContent], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+
+                    // Create download link
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Invoice_Dashboard_${new Date().toISOString().split('T')[0]}.html`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    alert('Report saved with interactive charts! You can email this file and all charts, filters, and interactivity will work when opened.');
+                } catch (error) {
+                    alert('Error saving report: ' + error.message);
+                    console.error('Save error:', error);
+                } finally {
+                    // Restore button
+                    saveBtn.textContent = originalButtonText;
+                    saveBtn.disabled = false;
+                }
+            }, 100);
+        }
+
+        function resetUpload() {
+            const message = window.EMBEDDED_REPORT_DATA
+                ? 'Are you sure you want to load new data? This will clear the saved report.'
+                : 'Are you sure you want to start over? Current data will be lost.';
+
+            if (confirm(message)) {
+                // Clear embedded data if it exists
+                if (window.EMBEDDED_REPORT_DATA) {
+                    delete window.EMBEDDED_REPORT_DATA;
+
+                    // Remove the embedded data script if it exists
+                    const embeddedScript = document.getElementById('embeddedData');
+                    if (embeddedScript) {
+                        embeddedScript.remove();
+                    }
+                }
+
+                location.reload();
+            }
+        }
+
+        function togglePartners(customerId) {
+            const extraRows = document.getElementById(`extra_${customerId}`);
+            const button = document.getElementById(`btn_${customerId}`);
+
+            if (extraRows.style.display === 'none') {
+                extraRows.style.display = '';
+                button.textContent = 'Show Top 10';
+            } else {
+                extraRows.style.display = 'none';
+                const table = extraRows.closest('table');
+                const totalPartners = table.querySelectorAll('tbody').length > 1 ?
+                    table.querySelectorAll('tbody')[0].querySelectorAll('tr').length +
+                    table.querySelectorAll('tbody')[1].querySelectorAll('tr').length :
+                    table.querySelectorAll('tbody tr').length;
+                button.textContent = `Show All (${totalPartners})`;
+            }
+        }
+    </script>
+</body>
+</html>
